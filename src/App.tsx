@@ -17,32 +17,75 @@ import {
   User, 
   BrainCircuit, 
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Database,
+  RefreshCw
 } from 'lucide-react';
+import { isSupabaseConfigured } from './supabaseClient';
+import { supabaseService } from './lib/supabaseService';
+import { SupabaseBridge } from './components/SupabaseBridge';
 
 export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isNewAppOpen, setIsNewAppOpen] = useState(false);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'matrix' | 'about'>('dashboard');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'matrix' | 'about' | 'supabase'>('dashboard');
+  const [isLoading, setIsLoading] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
-  // Load from local storage or fall back to mock data
+  // Load applications on mount
   useEffect(() => {
-    const saved = localStorage.getItem('hiretrack_applications');
-    if (saved) {
-      try {
-        setApplications(JSON.parse(saved));
-      } catch (e) {
-        console.error("Error reading saved applications, restoring defaults", e);
+    const loadData = async () => {
+      setIsLoading(true);
+      setDbError(null);
+
+      // Check if Supabase is active
+      if (isSupabaseConfigured) {
+        try {
+          const cloudData = await supabaseService.fetchApplications();
+          if (cloudData && cloudData.length > 0) {
+            setApplications(cloudData);
+            // Also update local cache for quick loading next time
+            localStorage.setItem('hiretrack_applications', JSON.stringify(cloudData));
+          } else {
+            // Supabase is empty, check if we have local storage data to start with
+            const saved = localStorage.getItem('hiretrack_applications');
+            if (saved) {
+              setApplications(JSON.parse(saved));
+            } else {
+              setApplications(INITIAL_APPLICATIONS);
+            }
+          }
+        } catch (err: any) {
+          console.error("Supabase load failed, falling back to local storage", err);
+          setDbError("Could not retrieve cloud data. Loading offline backup.");
+          loadLocalFallback();
+        }
+      } else {
+        loadLocalFallback();
+      }
+      setIsLoading(false);
+    };
+
+    const loadLocalFallback = () => {
+      const saved = localStorage.getItem('hiretrack_applications');
+      if (saved) {
+        try {
+          setApplications(JSON.parse(saved));
+        } catch (e) {
+          console.error("Error reading saved applications, restoring defaults", e);
+          setApplications(INITIAL_APPLICATIONS);
+        }
+      } else {
         setApplications(INITIAL_APPLICATIONS);
       }
-    } else {
-      setApplications(INITIAL_APPLICATIONS);
-    }
+    };
+
+    loadData();
   }, []);
 
-  // Save to local storage on changes
-  const saveApplications = (updatedList: JobApplication[]) => {
+  // Save locally (Optimistic UI fallback cache)
+  const saveLocalOnly = (updatedList: JobApplication[]) => {
     setApplications(updatedList);
     localStorage.setItem('hiretrack_applications', JSON.stringify(updatedList));
 
@@ -56,26 +99,73 @@ export default function App() {
   };
 
   // Add Application
-  const handleAddApplication = (newApp: JobApplication) => {
+  const handleAddApplication = async (newApp: JobApplication) => {
+    // 1. Optimistic update
     const updated = [newApp, ...applications];
-    saveApplications(updated);
+    saveLocalOnly(updated);
+
+    // 2. Cloud sync if active
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.addApplication(newApp);
+      } catch (err) {
+        console.error("Cloud save failed", err);
+        alert("Failed to save to cloud database, but saved locally in offline sandbox mode.");
+      }
+    }
   };
 
   // Update Application (Sync from slide over details)
-  const handleUpdateApplication = (updatedApp: JobApplication) => {
+  const handleUpdateApplication = async (updatedApp: JobApplication) => {
+    // 1. Optimistic update
     const updated = applications.map(app => app.id === updatedApp.id ? updatedApp : app);
-    saveApplications(updated);
+    saveLocalOnly(updated);
+
+    // 2. Cloud sync if active
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.updateApplication(updatedApp);
+      } catch (err) {
+        console.error("Cloud update failed", err);
+        alert("Failed to update on cloud database, but updated locally in offline sandbox mode.");
+      }
+    }
   };
 
   // Delete Application
-  const handleDeleteApplication = (id: string, e: React.MouseEvent) => {
+  const handleDeleteApplication = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this job application track?')) {
+      // 1. Optimistic update
       const updated = applications.filter(app => app.id !== id);
-      saveApplications(updated);
+      saveLocalOnly(updated);
       if (selectedApplication?.id === id) {
         setSelectedApplication(null);
       }
+
+      // 2. Cloud sync if active
+      if (isSupabaseConfigured) {
+        try {
+          await supabaseService.deleteApplication(id);
+        } catch (err) {
+          console.error("Cloud delete failed", err);
+          alert("Failed to delete from cloud database, but deleted locally in offline sandbox mode.");
+        }
+      }
+    }
+  };
+
+  // Refresh data from cloud manually
+  const handleRefreshFromCloud = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const cloudData = await supabaseService.fetchApplications();
+      if (cloudData) {
+        saveLocalOnly(cloudData);
+      }
+    } catch (err) {
+      console.error("Force sync failed", err);
+      throw err;
     }
   };
 
@@ -153,6 +243,18 @@ export default function App() {
             <BookOpen className="w-4.5 h-4.5" />
             <span>Developer Guide</span>
           </button>
+
+          <button
+            onClick={() => setActiveSidebarTab('supabase')}
+            className={`flex items-center gap-3 w-full p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all ${
+              activeSidebarTab === 'supabase' 
+                ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30' 
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+            }`}
+          >
+            <Database className="w-4.5 h-4.5" />
+            <span>Supabase Bridge</span>
+          </button>
         </nav>
 
         {/* User Block at bottom */}
@@ -171,6 +273,19 @@ export default function App() {
 
       {/* 2. MAIN APPLICATION CONTENT AREA */}
       <main className="flex-1 lg:ml-64 p-4 md:p-8 lg:p-10 pb-24 overflow-x-hidden">
+        
+        {isLoading && (
+          <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
+            <RefreshCw className="w-4.5 h-4.5 text-indigo-400 animate-spin" />
+            <span className="text-xs font-bold text-slate-300">Synchronizing database with Supabase cloud...</span>
+          </div>
+        )}
+
+        {dbError && (
+          <div className="bg-amber-950/20 border border-amber-900/30 p-4 rounded-xl text-xs text-amber-300 mb-6 max-w-lg">
+            {dbError}
+          </div>
+        )}
         
         {/* DASHBOARD TAB */}
         {activeSidebarTab === 'dashboard' && (
@@ -328,6 +443,15 @@ export default function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* SUPABASE BRIDGE TAB */}
+        {activeSidebarTab === 'supabase' && (
+          <SupabaseBridge 
+            applications={applications}
+            onSyncComplete={(updatedApps) => setApplications(updatedApps)}
+            onRefreshFromCloud={handleRefreshFromCloud}
+          />
         )}
 
       </main>
