@@ -19,7 +19,8 @@ import {
   ChevronRight,
   BookOpen,
   Database,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
@@ -58,7 +59,23 @@ export default function App() {
           }
         } catch (err: any) {
           console.error("Supabase load failed, falling back to local storage", err);
-          setDbError("Could not retrieve cloud data. Loading offline backup.");
+          let userFriendlyMessage = "Could not retrieve cloud data. Loading offline backup.";
+          
+          if (err && err.message) {
+            if (err.message.includes("relation") && (err.message.includes("does not exist") || err.message.includes("not found"))) {
+              userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please click 'Supabase Bridge' in the sidebar, copy the SQL initialization script, and execute it in your Supabase SQL Editor to create the table!";
+            } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("network")) {
+              userFriendlyMessage = "Network Connection Error: Unable to reach Supabase. Check your internet connection or verify VITE_SUPABASE_URL in your Vercel configurations.";
+            } else if (err.message.includes("JWT") || err.message.includes("invalid") || err.message.includes("key")) {
+              userFriendlyMessage = "Authentication Key Error: Your Supabase API key (anon key) is invalid or expired. Check your VITE_SUPABASE_ANON_KEY on Vercel.";
+            } else {
+              userFriendlyMessage = `Supabase Error: ${err.message}. Loading offline backup.`;
+            }
+          } else if (err && err.code) {
+            userFriendlyMessage = `Supabase query failed (code ${err.code}). Loaded offline backup instead.`;
+          }
+          
+          setDbError(userFriendlyMessage);
           loadLocalFallback();
         }
       } else {
@@ -282,8 +299,21 @@ export default function App() {
         )}
 
         {dbError && (
-          <div className="bg-amber-950/20 border border-amber-900/30 p-4 rounded-xl text-xs text-amber-300 mb-6 max-w-lg">
-            {dbError}
+          <div className="bg-slate-900 border border-amber-500/30 p-5 rounded-2xl text-xs text-slate-300 mb-6 max-w-2xl shadow-lg flex flex-col sm:flex-row items-start gap-3.5">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-2 flex-1">
+              <span className="font-bold text-amber-400 block uppercase tracking-wider text-[10px]">Cloud Connection Status</span>
+              <p className="leading-relaxed font-medium">{dbError}</p>
+              {dbError.includes("table was not found") && (
+                <button
+                  onClick={() => setActiveSidebarTab('supabase')}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider transition cursor-pointer flex items-center gap-1 mt-1"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>Get SQL schema script</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
         
