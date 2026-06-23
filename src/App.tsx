@@ -91,7 +91,7 @@ export default function App() {
   };
 
   return (
-    <div className="ambient-bg min-h-screen text-slate-800 font-sans flex flex-col lg:flex-row">
+    <div className="ambient-bg min-h-screen text-slate-100/90 font-sans flex flex-col lg:flex-row">
       
       {/* 1. SIDEBAR NAVIGATION */}
       <aside className="w-full lg:w-64 bg-slate-900 text-white lg:fixed lg:h-full flex flex-col z-40 border-r border-slate-800 shadow-xl" id="sidebar">
@@ -176,12 +176,12 @@ export default function App() {
         {activeSidebarTab === 'dashboard' && (
           <div className="space-y-8" id="tab-dashboard-view">
             {/* Upper Header Row */}
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/50 pb-6">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-6">
               <div>
-                <h1 className="text-3xl font-black font-display text-slate-900 tracking-tight flex items-center gap-2">
+                <h1 className="text-3xl font-black font-display text-white tracking-tight flex items-center gap-2">
                   Application Pipeline
                 </h1>
-                <p className="text-slate-500 text-sm font-medium mt-1">
+                <p className="text-slate-400 text-sm font-medium mt-1">
                   Tracking active developer interviews, logistics, and feedback cycles.
                 </p>
               </div>
@@ -190,10 +190,10 @@ export default function App() {
               <div className="flex items-center gap-3.5 w-full sm:w-auto">
                 <button
                   onClick={handleExportData}
-                  className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-xs border border-slate-200/80 shadow-sm flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl font-bold text-xs border border-slate-800 shadow-sm flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer"
                   title="Export tracking JSON for Phase 2 Supabase Import"
                 >
-                  <Download className="w-4 h-4 text-slate-400" />
+                  <Download className="w-4 h-4 text-slate-500" />
                   <span>Export JSON</span>
                 </button>
 
@@ -223,29 +223,29 @@ export default function App() {
         {/* SKILL MATRIX TAB */}
         {activeSidebarTab === 'matrix' && (
           <div className="space-y-8" id="tab-matrix-view">
-            <header className="border-b border-slate-200/50 pb-6">
-              <h1 className="text-3xl font-black font-display text-slate-900 tracking-tight">Technical Skill Matrix</h1>
-              <p className="text-slate-500 text-sm font-medium mt-1">
+            <header className="border-b border-slate-800 pb-6">
+              <h1 className="text-3xl font-black font-display text-white tracking-tight">Technical Skill Matrix</h1>
+              <p className="text-slate-400 text-sm font-medium mt-1">
                 Refine key engineering topics extracted from target Job Spec (JD) requirements.
               </p>
             </header>
-
+ 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Card 1: CUDA / High-Performance */}
-              <div className="glass-panel p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-indigo-500" />
-                    <h3 className="font-extrabold text-slate-800 text-base">HPC & CUDA Optimizations</h3>
+                    <Terminal className="w-5 h-5 text-indigo-400" />
+                    <h3 className="font-extrabold text-white text-base">HPC & CUDA Optimizations</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-100">GPU Core</span>
+                  <span className="text-[10px] font-bold bg-indigo-950/40 text-indigo-400 px-2 py-0.5 rounded border border-indigo-900/40">GPU Core</span>
                 </div>
                 
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed">
                   Review requirements logged in job specs. Ensure competence in:
                 </p>
-
-                <ul className="space-y-2.5 text-xs text-slate-600">
+ 
+                <ul className="space-y-2.5 text-xs text-slate-300">
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>Memory Hierarchy: Shared memory banks, global memory coalescence, and L1/L2 caching.</span>
@@ -260,22 +260,22 @@ export default function App() {
                   </li>
                 </ul>
               </div>
-
+ 
               {/* Card 2: Distributed Systems */}
-              <div className="glass-panel p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <BrainCircuit className="w-5 h-5 text-indigo-500" />
-                    <h3 className="font-extrabold text-slate-800 text-base">Distributed Backend Ledgers</h3>
+                    <BrainCircuit className="w-5 h-5 text-indigo-400" />
+                    <h3 className="font-extrabold text-white text-base">Distributed Backend Ledgers</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">Systems</span>
+                  <span className="text-[10px] font-bold bg-blue-950/40 text-blue-400 px-2 py-0.5 rounded border border-blue-900/40">Systems</span>
                 </div>
                 
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed">
                   Stripe-targeted & distributed platform concepts:
                 </p>
-
-                <ul className="space-y-2.5 text-xs text-slate-600">
+ 
+                <ul className="space-y-2.5 text-xs text-slate-300">
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>Idempotency Keys: Designing database unique indices and Redis key expiry loops for payments.</span>
@@ -297,30 +297,30 @@ export default function App() {
         {/* DEVELOPER GUIDE TAB */}
         {activeSidebarTab === 'about' && (
           <div className="space-y-8" id="tab-guide-view">
-            <header className="border-b border-slate-200/50 pb-6">
-              <h1 className="text-3xl font-black font-display text-slate-900 tracking-tight">HireTrack Developer Guide</h1>
-              <p className="text-slate-500 text-sm font-medium mt-1">
+            <header className="border-b border-slate-800 pb-6">
+              <h1 className="text-3xl font-black font-display text-white tracking-tight">HireTrack Developer Guide</h1>
+              <p className="text-slate-400 text-sm font-medium mt-1">
                 A modern framework overview for tracking complex technical pipelines.
               </p>
             </header>
-
-            <div className="glass-panel p-8 rounded-3xl border border-slate-200/60 max-w-4xl space-y-6">
+ 
+            <div className="glass-panel p-8 rounded-3xl border border-slate-800 max-w-4xl space-y-6">
               <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Phase 1: Glassmorphic PoC with Full State Engine</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <h3 className="text-lg font-black text-white">Phase 1: Glassmorphic PoC with Full State Engine</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
                   This local interface demonstrates both premium front-end fidelity and highly detailed data fields. All edits, 7-phase remarks, pros, cons, and self-ratings update dynamically in real-time, saved directly in your browser's persistent cache.
                 </p>
               </div>
-
-              <div className="space-y-3 border-t border-slate-100 pt-6">
-                <h3 className="text-lg font-black text-indigo-600 flex items-center gap-1.5">
+ 
+              <div className="space-y-3 border-t border-slate-800 pt-6">
+                <h3 className="text-lg font-black text-indigo-400 flex items-center gap-1.5">
                   <TrendingUp className="w-5 h-5" />
                   Transitioning to Phase 2 (Production Relational database / Supabase)
                 </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <p className="text-sm text-slate-400 leading-relaxed">
                   When you are ready to migrate to Phase 2, follow these steps:
                 </p>
-                <ol className="list-decimal list-inside text-xs text-slate-600 space-y-2 leading-relaxed">
+                <ol className="list-decimal list-inside text-xs text-slate-300 space-y-2 leading-relaxed">
                   <li>Use the <strong>"Export JSON"</strong> button to download a complete backup containing your active tracking records.</li>
                   <li>Our Phase 2 schema maps each application cleanly to a relational database table with foreign keys for the seven child-timeline stages.</li>
                   <li>Enable Supabase/Firebase Auth to authenticate logins. Each user tracks their own secure pipelines.</li>

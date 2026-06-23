@@ -48,29 +48,29 @@ export function StatsGrid({ applications }: StatsGridProps) {
       label: 'Total Applications',
       value: total,
       icon: Briefcase,
-      colorClass: 'text-slate-800 bg-slate-50 border-slate-200',
-      glowClass: 'shadow-slate-100',
+      colorClass: 'text-slate-300 bg-slate-800/80 border-slate-700',
+      glowClass: 'hover:shadow-slate-900/50',
     },
     {
       label: 'Interviews Scheduled',
       value: interviewsCount,
       icon: Calendar,
-      colorClass: 'text-indigo-600 bg-indigo-50 border-indigo-100',
-      glowClass: 'shadow-indigo-100',
+      colorClass: 'text-indigo-400 bg-indigo-950/40 border-indigo-900/40',
+      glowClass: 'hover:shadow-indigo-950/40',
     },
     {
       label: 'Offers Secured',
       value: offersCount,
       icon: Award,
-      colorClass: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-      glowClass: 'shadow-emerald-100',
+      colorClass: 'text-emerald-400 bg-emerald-950/40 border-emerald-900/40',
+      glowClass: 'hover:shadow-emerald-950/40',
     },
     {
       label: 'Avg Target Salary',
       value: avgSalary,
       icon: Banknote,
-      colorClass: 'text-blue-600 bg-blue-50 border-blue-100',
-      glowClass: 'shadow-blue-100',
+      colorClass: 'text-blue-400 bg-blue-950/40 border-blue-900/40',
+      glowClass: 'hover:shadow-blue-950/40',
     }
   ];
 
@@ -82,11 +82,11 @@ export function StatsGrid({ applications }: StatsGridProps) {
           <div
             key={i}
             id={`stat-card-${i}`}
-            className={`glass-panel p-6 rounded-2xl shadow-sm border border-white/40 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:translate-y-[-2px] ${stat.glowClass}`}
+            className={`glass-panel p-6 rounded-2xl shadow-sm border border-slate-800/40 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:translate-y-[-2px] ${stat.glowClass}`}
           >
             <div>
               <p className="text-slate-500 text-xs uppercase tracking-wider font-bold">{stat.label}</p>
-              <h3 className="text-3xl font-extrabold font-display text-slate-800 mt-2">{stat.value}</h3>
+              <h3 className="text-3xl font-extrabold font-display text-white mt-2">{stat.value}</h3>
             </div>
             <div className={`p-3.5 rounded-xl border ${stat.colorClass} flex items-center justify-center`}>
               <Icon className="w-5 h-5" />

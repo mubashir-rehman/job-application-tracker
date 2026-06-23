@@ -83,22 +83,22 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity"
       id="new-app-modal"
     >
       <div 
-        className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col"
+        className="bg-slate-900 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-800 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal sticky top header */}
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
           <div>
-            <h2 className="text-2xl font-black font-display text-slate-800">Add New Opportunity</h2>
-            <p className="text-slate-500 text-xs mt-0.5 font-medium">Log key requirements and establish tracking metrics</p>
+            <h2 className="text-2xl font-black font-display text-white">Add New Opportunity</h2>
+            <p className="text-slate-400 text-xs mt-0.5 font-medium">Log key requirements and establish tracking metrics</p>
           </div>
           <button 
             onClick={onClose} 
-            className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-full transition text-2xl font-bold leading-none"
+            className="text-slate-400 hover:text-slate-200 p-1.5 hover:bg-slate-800 rounded-full transition text-2xl font-bold leading-none"
           >
             &times;
           </button>
@@ -110,9 +110,9 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
             
             {/* Section 1: Core Details */}
             <div className="space-y-4" id="form-core-details">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mb-4">
-                <Briefcase className="w-4.5 h-4.5 text-indigo-500" />
-                <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-4">
+                <Briefcase className="w-4.5 h-4.5 text-indigo-400" />
+                <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">
                   1. Core Employment Details
                 </h3>
               </div>
@@ -128,8 +128,8 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="e.g. Google, NVIDIA"
-                    className={`text-xs bg-slate-50 border p-2.5 rounded-xl w-full outline-none focus:bg-white focus:ring-2 transition ${
-                      errors.companyName ? 'border-rose-300 focus:ring-rose-500/10' : 'border-slate-200 focus:ring-indigo-500/15 focus:border-indigo-500'
+                    className={`text-xs bg-slate-950 border p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:ring-2 transition ${
+                      errors.companyName ? 'border-rose-500 focus:ring-rose-500/10' : 'border-slate-800 focus:ring-indigo-500/15 focus:border-indigo-500'
                     }`}
                   />
                   {errors.companyName && (
@@ -147,8 +147,8 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={targetRole}
                     onChange={(e) => setTargetRole(e.target.value)}
                     placeholder="e.g. Senior CUDA Dev"
-                    className={`text-xs bg-slate-50 border p-2.5 rounded-xl w-full outline-none focus:bg-white focus:ring-2 transition ${
-                      errors.targetRole ? 'border-rose-300 focus:ring-rose-500/10' : 'border-slate-200 focus:ring-indigo-500/15 focus:border-indigo-500'
+                    className={`text-xs bg-slate-950 border p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:ring-2 transition ${
+                      errors.targetRole ? 'border-rose-500 focus:ring-rose-500/10' : 'border-slate-800 focus:ring-indigo-500/15 focus:border-indigo-500'
                     }`}
                   />
                   {errors.targetRole && (
@@ -166,7 +166,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     id="new-work-model"
                     value={workModel}
                     onChange={(e) => setWorkModel(e.target.value as WorkModelType)}
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold text-slate-700 cursor-pointer"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold text-slate-300 cursor-pointer"
                   >
                     <option value="Remote">Remote</option>
                     <option value="Hybrid">Hybrid</option>
@@ -184,7 +184,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="e.g. Dublin, IE or Hybrid"
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
                   />
                 </div>
               </div>
@@ -200,7 +200,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={salaryRange}
                     onChange={(e) => setSalaryRange(e.target.value)}
                     placeholder="e.g. $190k - $240k"
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-bold"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-bold"
                   />
                 </div>
 
@@ -214,7 +214,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={otherBenefits}
                     onChange={(e) => setOtherBenefits(e.target.value)}
                     placeholder="e.g. 15% Bonus, ESPP, Dental"
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
                   />
                 </div>
               </div>
@@ -222,9 +222,9 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
 
             {/* Section 2: Logistics & Links */}
             <div className="space-y-4" id="form-logistics">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mb-4">
-                <FileText className="w-4.5 h-4.5 text-indigo-500" />
-                <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-4">
+                <FileText className="w-4.5 h-4.5 text-indigo-400" />
+                <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">
                   2. Tracking & Logistics
                 </h3>
               </div>
@@ -239,7 +239,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   value={hrContact}
                   onChange={(e) => setHrContact(e.target.value)}
                   placeholder="e.g. Sarah Jenkins (Recruiter)"
-                  className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold text-slate-800"
+                  className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold"
                 />
               </div>
 
@@ -251,7 +251,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   id="new-applied-via"
                   value={appliedVia}
                   onChange={(e) => setAppliedVia(e.target.value as AppliedViaType)}
-                  className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold text-slate-700 cursor-pointer"
+                  className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-semibold text-slate-300 cursor-pointer"
                 >
                   <option value="LinkedIn">LinkedIn</option>
                   <option value="Email">Email</option>
@@ -272,7 +272,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={resumeLink}
                     onChange={(e) => setResumeLink(e.target.value)}
                     placeholder="e.g. GDrive URL"
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono"
                   />
                 </div>
 
@@ -286,7 +286,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={portfolioLink}
                     onChange={(e) => setPortfolioLink(e.target.value)}
                     placeholder="e.g. Portfolio/GitHub URL"
-                    className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono"
                   />
                 </div>
               </div>
@@ -303,24 +303,24 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                 value={keyJdRequirements}
                 onChange={(e) => setKeyJdRequirements(e.target.value)}
                 placeholder="Paste key spec constraints here... (e.g. 5+ years C++, GPU programming, warp optimization, Docker execution loops)"
-                className="text-xs bg-slate-50 border border-slate-200 p-3.5 rounded-2xl w-full outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 leading-relaxed text-slate-700 font-medium"
+                className="text-xs bg-slate-950 border border-slate-800 p-3.5 rounded-2xl w-full outline-none focus:bg-slate-950 text-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 leading-relaxed font-medium"
               />
             </div>
           </div>
 
           {/* Buttons footer */}
-          <div className="pt-6 border-t border-slate-100 flex justify-end gap-3.5">
+          <div className="pt-6 border-t border-slate-800/80 flex justify-end gap-3.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition"
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:bg-slate-800 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               id="submit-new-app-btn"
-              className="px-8 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl font-bold transition shadow-lg hover:shadow shadow-slate-900/10 hover:shadow-indigo-500/15 flex items-center gap-1.5"
+              className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition shadow-lg hover:shadow hover:shadow-indigo-500/15 flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               Save Opportunity

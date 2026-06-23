@@ -72,14 +72,14 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     setTimeout(() => setIsSaved(false), 2500);
   };
 
-  // Status mapping for phases icon indicators
+  // Status mapping for phases icon indicators - Elegant Dark Theme
   const renderPhaseIndicator = (phase: InterviewPhase, index: number) => {
     const status = phase.status;
     if (status === 'completed') {
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'active')}
-          className="z-10 w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white ring-4 ring-white shadow transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white ring-4 ring-slate-950 shadow transition-all duration-150"
           title="Mark active"
         >
           <CheckCircle2 className="w-5 h-5" />
@@ -90,7 +90,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'completed')}
-          className="z-10 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white ring-4 ring-white ring-offset-1 shadow-md animate-pulse transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white ring-4 ring-slate-950 ring-offset-1 shadow-md animate-pulse transition-all duration-150"
           title="Mark complete"
         >
           <span className="text-xs font-black">{index + 1}</span>
@@ -101,7 +101,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'upcoming')}
-          className="z-10 w-9 h-9 rounded-full bg-slate-300 hover:bg-slate-400 flex items-center justify-center text-white ring-4 ring-white shadow transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white ring-4 ring-slate-950 shadow transition-all duration-150"
           title="Restore"
         >
           <Circle className="w-4 h-4 line-through opacity-70" />
@@ -111,7 +111,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     return (
       <button 
         onClick={() => handlePhaseChange(index, 'status', 'active')}
-        className="z-10 w-9 h-9 rounded-full bg-slate-200 hover:bg-indigo-50 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:border-indigo-300 border border-slate-300/40 ring-4 ring-white shadow-sm transition-all duration-150"
+        className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-750 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:border-indigo-500 border border-slate-700/50 ring-4 ring-slate-950 shadow-sm transition-all duration-150"
         title="Mark active"
       >
         <span className="text-xs font-bold">{index + 1}</span>
@@ -123,28 +123,28 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     <>
       {/* Backdrop overlay */}
       <div 
-        className="fixed inset-0 bg-slate-900/45 backdrop-blur-sm z-40 transition-opacity"
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 transition-opacity"
         onClick={onClose}
         id="slideover-backdrop"
       />
 
       {/* Slide-over panel container */}
       <div 
-        className="fixed right-0 top-0 h-full w-full max-w-3xl bg-slate-50 shadow-2xl z-50 overflow-y-auto flex flex-col border-l border-slate-200/40"
+        className="fixed right-0 top-0 h-full w-full max-w-3xl bg-slate-950 shadow-2xl z-50 overflow-y-auto flex flex-col border-l border-slate-800"
         id="slideover-panel"
       >
         {/* Banner Sticky Header */}
-        <div className="bg-white border-b border-slate-200/60 p-6 sticky top-0 z-30 flex justify-between items-center shadow-sm">
+        <div className="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-30 flex justify-between items-center shadow-sm">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-black font-display text-slate-900">{editedApp.companyName}</h2>
+              <h2 className="text-2xl font-black font-display text-white">{editedApp.companyName}</h2>
               <span className={`text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full border ${
-                editedApp.currentStatus.toLowerCase().includes('offer') ? 'bg-emerald-100/60 text-emerald-700 border-emerald-200' : 'bg-indigo-100/60 text-indigo-700 border-indigo-200'
+                editedApp.currentStatus.toLowerCase().includes('offer') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
               }`}>
                 {editedApp.currentStatus}
               </span>
             </div>
-            <p className="text-sm font-semibold text-slate-500 mt-1">{editedApp.targetRole}</p>
+            <p className="text-sm font-semibold text-slate-400 mt-1">{editedApp.targetRole}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             {/* Close Cross */}
             <button 
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-full transition"
             >
               <X className="w-5 h-5" />
             </button>
@@ -173,13 +173,13 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
         </div>
 
         {/* Tab Controls */}
-        <div className="bg-white px-8 pt-4 border-b border-slate-100 flex gap-6">
+        <div className="bg-slate-900 px-8 pt-4 border-b border-slate-800 flex gap-6">
           <button
             onClick={() => setActiveTab('timeline')}
             className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
               activeTab === 'timeline' 
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'border-indigo-500 text-white' 
+                : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
             Timeline & 7-Phases
@@ -188,8 +188,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             onClick={() => setActiveTab('core')}
             className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
               activeTab === 'core' 
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'border-indigo-500 text-white' 
+                : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
             Core Details & Logistics
@@ -198,8 +198,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             onClick={() => setActiveTab('mortem')}
             className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
               activeTab === 'mortem' 
-                ? 'border-indigo-600 text-indigo-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'border-indigo-500 text-white' 
+                : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
             Post-Mortem & Skills
@@ -213,7 +213,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
           {activeTab === 'timeline' && (
             <div className="space-y-10 relative pl-4" id="timeline-tab-content">
               {/* Dynamic vertical link line */}
-              <div className="absolute left-8 top-3 bottom-8 w-0.5 bg-slate-200" />
+              <div className="absolute left-8 top-3 bottom-8 w-0.5 bg-slate-800" />
 
               {editedApp.phases.map((phase, i) => {
                 const isActive = phase.status === 'active';
@@ -228,40 +228,40 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     {/* Timeline card */}
                     <div className={`glass-panel p-5.5 rounded-2xl border transition-all duration-200 ${
                       isActive 
-                        ? 'border-indigo-200 bg-white shadow-md ring-2 ring-indigo-500/10' 
+                        ? 'border-indigo-500/30 bg-slate-900 shadow-md ring-2 ring-indigo-500/10' 
                         : isCompleted
-                          ? 'border-emerald-100/80 bg-white/60'
-                          : 'border-slate-200/50 bg-white/30 opacity-70 hover:opacity-100'
+                          ? 'border-emerald-500/20 bg-slate-900/60'
+                          : 'border-slate-800 bg-slate-900/30 opacity-70 hover:opacity-100'
                     }`}>
                       
                       {/* Card title and Date */}
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-3.5 mb-4">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3.5 mb-4">
                         <div>
-                          <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block">Stage {i+1}</span>
-                          <h4 className={`font-extrabold text-sm uppercase tracking-tight ${isActive ? 'text-indigo-900' : 'text-slate-800'}`}>
+                          <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Stage {i+1}</span>
+                          <h4 className={`font-extrabold text-sm uppercase tracking-tight ${isActive ? 'text-indigo-400' : 'text-slate-100'}`}>
                             {phase.name}
                           </h4>
                         </div>
 
                         {/* Date field */}
                         <div className="flex items-center gap-1.5 w-full sm:w-44">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                           <input
                             type="date"
                             value={phase.date}
                             onChange={(e) => handlePhaseChange(i, 'date', e.target.value)}
-                            className="text-xs bg-white/70 border border-slate-200/80 py-1 px-2 rounded-lg outline-none font-semibold text-slate-700 w-full focus:bg-white focus:border-indigo-400"
+                            className="text-xs bg-slate-950 border border-slate-800 py-1 px-2 rounded-lg outline-none font-semibold text-slate-300 w-full focus:bg-slate-950 focus:border-indigo-500"
                           />
                         </div>
                       </div>
 
                       {/* Timeline Card Status Dropdown */}
                       <div className="mb-4 flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phase State:</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phase State:</span>
                         <select
                           value={phase.status}
                           onChange={(e) => handlePhaseChange(i, 'status', e.target.value as any)}
-                          className="text-xs font-semibold bg-white border border-slate-200 py-1 pl-2 pr-6 outline-none text-slate-600 rounded-lg max-w-[130px] cursor-pointer"
+                          className="text-xs font-semibold bg-slate-950 border border-slate-800 py-1 pl-2 pr-6 outline-none text-slate-300 rounded-lg max-w-[130px] cursor-pointer"
                         >
                           <option value="upcoming">Upcoming</option>
                           <option value="active">Active</option>
@@ -273,36 +273,36 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       {/* Visible/Editable text areas */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Pros / Positive Signals</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pros / Positive Signals</label>
                           <textarea
                             rows={2}
                             value={phase.pros}
                             onChange={(e) => handlePhaseChange(i, 'pros', e.target.value)}
                             placeholder="Positive metrics, culture match, system design alignments..."
-                            className="text-xs bg-white/70 border border-slate-200/80 p-2.5 rounded-xl w-full focus:bg-white transition"
+                            className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full focus:bg-slate-950 text-slate-200 transition placeholder-slate-600 outline-none focus:border-indigo-500"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cons / Red Flags</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cons / Red Flags</label>
                           <textarea
                             rows={2}
                             value={phase.cons}
                             onChange={(e) => handlePhaseChange(i, 'cons', e.target.value)}
                             placeholder="Weak answers, timezone mismatch, compensation gaps..."
-                            className="text-xs bg-white/70 border border-slate-200/80 p-2.5 rounded-xl w-full focus:bg-white transition"
+                            className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full focus:bg-slate-950 text-slate-200 transition placeholder-slate-600 outline-none focus:border-indigo-500"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-3.5">
                         <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Remarks & Details</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Remarks & Details</label>
                           <textarea
                             rows={2}
                             value={phase.remarks}
                             onChange={(e) => handlePhaseChange(i, 'remarks', e.target.value)}
                             placeholder="Coding challenge instructions, interviewer names, architecture questions asked..."
-                            className="text-xs bg-white/70 border border-slate-200/80 p-2.5 rounded-xl w-full focus:bg-white transition"
+                            className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full focus:bg-slate-950 text-slate-200 transition placeholder-slate-600 outline-none focus:border-indigo-500"
                           />
                         </div>
                         <div>
@@ -312,7 +312,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                             value={phase.feedback}
                             onChange={(e) => handlePhaseChange(i, 'feedback', e.target.value)}
                             placeholder="Direct quotes from recruiters, email score summaries..."
-                            className="text-xs bg-indigo-50/40 border border-indigo-100 p-2.5 rounded-xl w-full text-indigo-900 focus:bg-white focus:border-indigo-500 transition"
+                            className="text-xs bg-indigo-950/20 border border-indigo-900/40 p-2.5 rounded-xl w-full text-slate-100 focus:bg-slate-950 transition placeholder-slate-700 outline-none focus:border-indigo-500"
                           />
                         </div>
                       </div>
@@ -332,41 +332,41 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Employment card */}
-                <div className="glass-panel p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
                     Employment Details
                   </h4>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Salary Range</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Salary Range</label>
                       <input
                         type="text"
                         value={editedApp.salaryRange}
                         onChange={(e) => handleFieldChange('salaryRange', e.target.value)}
                         placeholder="e.g., $180k - $220k"
-                        className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-semibold text-slate-800"
+                        className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-semibold text-slate-100"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Other Benefits</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Other Benefits</label>
                       <input
                         type="text"
                         value={editedApp.otherBenefits}
                         onChange={(e) => handleFieldChange('otherBenefits', e.target.value)}
                         placeholder="e.g., ESPP, Unlimited PTO, Equity"
-                        className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full text-slate-700 font-medium"
+                        className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full text-slate-300 font-medium"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Work Model</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Work Model</label>
                         <select
                           value={editedApp.workModel}
                           onChange={(e) => handleFieldChange('workModel', e.target.value as WorkModelType)}
-                          className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-semibold text-slate-700"
+                          className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-semibold text-slate-300"
                         >
                           <option value="Remote">Remote</option>
                           <option value="Hybrid">Hybrid</option>
@@ -375,13 +375,13 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Location</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Location</label>
                         <input
                           type="text"
                           value={editedApp.location}
                           onChange={(e) => handleFieldChange('location', e.target.value)}
                           placeholder="City, State"
-                          className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-semibold text-slate-800"
+                          className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-semibold text-slate-100"
                         />
                       </div>
                     </div>
@@ -389,30 +389,30 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 </div>
 
                 {/* Logistics & HR card */}
-                <div className="glass-panel p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
                     HR & Application Link Logistics
                   </h4>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">HR / Recruiter Contact</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">HR / Recruiter Contact</label>
                       <input
                         type="text"
                         value={editedApp.hrContact}
                         onChange={(e) => handleFieldChange('hrContact', e.target.value)}
                         placeholder="Name, Email, or phone"
-                        className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-semibold text-slate-800"
+                        className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-semibold text-slate-100"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Applied Via</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Applied Via</label>
                         <select
                           value={editedApp.appliedVia}
                           onChange={(e) => handleFieldChange('appliedVia', e.target.value as AppliedViaType)}
-                          className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-semibold text-slate-700"
+                          className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-semibold text-slate-300"
                         >
                           <option value="LinkedIn">LinkedIn</option>
                           <option value="Email">Email</option>
@@ -423,13 +423,13 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Current Status Banner</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Current Status Banner</label>
                         <input
                           type="text"
                           value={editedApp.currentStatus}
                           onChange={(e) => handleFieldChange('currentStatus', e.target.value)}
                           placeholder="Current Status"
-                          className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full font-bold text-indigo-700"
+                          className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full font-bold text-indigo-400"
                         />
                       </div>
                     </div>
@@ -437,21 +437,21 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     {/* Anchor Assets */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Resume Link</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Resume Link</label>
                         <div className="flex gap-1">
                           <input
                             type="url"
                             value={editedApp.resumeLink}
                             onChange={(e) => handleFieldChange('resumeLink', e.target.value)}
                             placeholder="e.g. Drive PDF Link"
-                            className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full text-slate-600 font-mono"
+                            className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full text-slate-300 font-mono"
                           />
                           {editedApp.resumeLink && (
                             <a 
                               href={editedApp.resumeLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0"
+                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0"
                             >
                               <ExternalLink className="w-4.5 h-4.5" />
                             </a>
@@ -460,21 +460,21 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Portfolio Link</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Portfolio Link</label>
                         <div className="flex gap-1">
                           <input
                             type="url"
                             value={editedApp.portfolioLink}
                             onChange={(e) => handleFieldChange('portfolioLink', e.target.value)}
                             placeholder="e.g. GitHub profile"
-                            className="text-xs bg-white/80 border border-slate-200/80 p-2 rounded-lg w-full text-slate-600 font-mono"
+                            className="text-xs bg-slate-950 border border-slate-800 p-2 rounded-lg w-full text-slate-300 font-mono"
                           />
                           {editedApp.portfolioLink && (
                             <a 
                               href={editedApp.portfolioLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0"
+                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0"
                             >
                               <ExternalLink className="w-4.5 h-4.5" />
                             </a>
@@ -487,8 +487,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 </div>
 
                 {/* Key JD Requirements */}
-                <div className="col-span-1 md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-3">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
+                <div className="col-span-1 md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-3">
+                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
                     Key Job Description Requirements & Stack
                   </h4>
                   <textarea
@@ -496,7 +496,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     value={editedApp.keyJdRequirements}
                     onChange={(e) => handleFieldChange('keyJdRequirements', e.target.value)}
                     placeholder="Paste the key highlights, stack details, framework needs, and experience bars from the Job Spec..."
-                    className="text-xs bg-white/85 border border-slate-200/80 p-3 rounded-xl w-full leading-relaxed focus:bg-white text-slate-700"
+                    className="text-xs bg-slate-950 border border-slate-800 p-3 rounded-xl w-full leading-relaxed focus:bg-slate-950 text-slate-200 outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
@@ -598,10 +598,10 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
         </div>
         
         {/* Footer sticky bar */}
-        <div className="bg-white border-t border-slate-200/60 p-4 sticky bottom-0 z-30 flex justify-end gap-3 px-6 shadow-inner">
+        <div className="bg-slate-900 border-t border-slate-800 p-4 sticky bottom-0 z-30 flex justify-end gap-3 px-6 shadow-inner">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-all"
+            className="px-5 py-2.5 text-sm font-bold text-slate-400 hover:bg-slate-800 rounded-xl transition-all"
           >
             Close Detail View
           </button>
