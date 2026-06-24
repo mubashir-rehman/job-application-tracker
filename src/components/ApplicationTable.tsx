@@ -66,13 +66,13 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
     const clean = name.trim().toUpperCase();
     const hash = clean.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const colors = [
-      { bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
-      { bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-      { bg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-      { bg: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-      { bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-      { bg: 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20' },
-      { bg: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
+      { bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      { bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      { bg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+      { bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+      { bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+      { bg: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20' },
+      { bg: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
     ];
     return colors[hash % colors.length];
   };
@@ -102,13 +102,13 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
   // Helper to color statuses - Observer UI Colors
   const getStatusStyles = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('offer')) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
-    if (s.includes('reject') || s.includes('fail') || s.includes('archive')) return { text: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' };
-    if (s.includes('tech') || s.includes('final')) return { text: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' };
-    if (s.includes('negotiation') || s.includes('hr')) return { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' };
-    if (s.includes('screening') || s.includes('prescreen')) return { text: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' };
-    if (s.includes('submitted')) return { text: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20' };
-    return { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' };
+    if (s.includes('offer')) return { text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
+    if (s.includes('reject') || s.includes('fail') || s.includes('archive')) return { text: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' };
+    if (s.includes('tech') || s.includes('final')) return { text: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' };
+    if (s.includes('negotiation') || s.includes('hr')) return { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' };
+    if (s.includes('screening') || s.includes('prescreen')) return { text: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' };
+    if (s.includes('submitted')) return { text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20' };
+    return { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' };
   };
 
   return (
@@ -193,7 +193,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
               <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4 animate-bounce" />
               <h3 className="text-lg font-bold text-slate-300">Start your first interview pipeline</h3>
               <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto">
-                Every dream offer begins with a single application. Click the <strong className="text-indigo-400">"New Application"</strong> button to start tracking your performance.
+                Every dream offer begins with a single application. Click the <strong className="text-indigo-600 dark:text-indigo-400">"New Application"</strong> button to start tracking your performance.
               </p>
             </div>
           ) : (
@@ -235,7 +235,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                               {app.companyName.trim().charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-extrabold text-slate-100 group-hover:text-indigo-400 transition-colors truncate">
+                              <div className="font-extrabold text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
                                 {app.companyName}
                               </div>
                               <div className="text-xs font-bold text-slate-300 mt-0.5 truncate">{app.targetRole}</div>
@@ -256,7 +256,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                           <div className="space-y-2 max-w-[200px]">
                             <div className="flex justify-between items-center text-[10px]">
                               <span className="text-slate-400 font-bold uppercase tracking-wider font-mono">Stage {completedPhases} / {totalPhases}</span>
-                              <span className="text-indigo-400 font-black font-mono">{progressPercent}%</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-black font-mono">{progressPercent}%</span>
                             </div>
                             
                             {/* Micro progress bar */}
@@ -328,14 +328,14 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                           <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => onSelectApplication(app)}
-                              className="p-2 hover:bg-indigo-950/60 text-indigo-400 rounded-lg transition-all"
+                              className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all"
                               title="Mission Control Room"
                             >
                               <ArrowRight className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => onDeleteApplication(app.id, e)}
-                              className="p-2 hover:bg-rose-950/60 text-rose-400 rounded-lg transition-all"
+                              className="p-2 hover:bg-rose-55 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-all"
                               title="Delete pipeline logs"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -371,7 +371,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                           </div>
                           <div>
                             <h4 className="font-extrabold text-slate-100 text-sm leading-tight">{app.companyName}</h4>
-                            <p className="text-xs text-indigo-400 font-bold mt-0.5">{app.targetRole}</p>
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">{app.targetRole}</p>
                           </div>
                         </div>
                         <Badge variant="outline" className={`border text-[9px] py-0.5 px-2 rounded-full font-bold h-auto ${statusInfo.bg} ${statusInfo.text} ${statusInfo.border}`}>
@@ -411,13 +411,13 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => onSelectApplication(app)}
-                            className="px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg text-xs font-bold transition"
+                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold transition"
                           >
                             Details
                           </button>
                           <button
                             onClick={(e) => onDeleteApplication(app.id, e)}
-                            className="p-1.5 bg-rose-950/40 hover:bg-rose-950/70 text-rose-400 rounded-lg transition"
+                            className="p-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-950/70 text-rose-600 dark:text-rose-400 rounded-lg transition"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

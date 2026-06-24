@@ -70,8 +70,8 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
         <div>
           <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
             <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest font-mono">Performance Index</span>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 px-2 py-0.5 rounded-full">
-              <Activity className="w-3 h-3 text-indigo-400 shrink-0" />
+            <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-900/40 px-2 py-0.5 rounded-full">
+              <Activity className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
               Live Telemetry
             </span>
           </div>
@@ -114,7 +114,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
 
         <div className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/60 text-center">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">calibration state</p>
-          <p className="text-xs text-indigo-400 font-black mt-1 font-mono uppercase">
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 font-black mt-1 font-mono uppercase">
             {finalScore >= 90 ? '⭐⭐⭐⭐⭐ High Conversion' : finalScore >= 80 ? '⭐⭐⭐⭐ Competitive Standard' : '⭐⭐⭐ Base Calibration'}
           </p>
         </div>
@@ -133,7 +133,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                  <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   Coding & Algorithms
                 </span>
                 <span className="text-slate-100 font-black font-mono">{(scores.coding).toFixed(1)}/10</span>
@@ -147,7 +147,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-blue-400" />
+                  <Cpu className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   System Architecture
                 </span>
                 <span className="text-slate-100 font-black font-mono">{(scores.systemDesign).toFixed(1)}/10</span>
@@ -161,7 +161,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   Technical Communication
                 </span>
                 <span className="text-slate-100 font-black font-mono">{(scores.communication).toFixed(1)}/10</span>
@@ -175,7 +175,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+                  <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   Product Leadership
                 </span>
                 <span className="text-slate-100 font-black font-mono">{(scores.leadership).toFixed(1)}/10</span>
@@ -193,13 +193,13 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
         <div>
           <div className="flex items-center justify-between border-b border-slate-800/60 pb-3 mb-4">
             <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest font-mono">Observer diagnostics</span>
-            <span className="text-[9px] bg-indigo-950/40 text-indigo-400 px-2 py-0.5 rounded border border-indigo-900/40 font-bold font-mono">SYS_OK</span>
+            <span className="text-[9px] bg-indigo-100/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded border border-indigo-200/50 dark:border-indigo-900/40 font-bold font-mono">SYS_OK</span>
           </div>
 
           <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
-              <span className="text-[10px] text-indigo-400 font-bold font-mono uppercase tracking-wide">Analysis Engine</span>
+              <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping" />
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold font-mono uppercase tracking-wide">Analysis Engine</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed italic font-medium">
               "{verdict}"

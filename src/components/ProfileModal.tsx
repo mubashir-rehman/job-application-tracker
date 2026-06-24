@@ -164,7 +164,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
               {/* Connected Infrastructure Indicator */}
               <div className="p-4 bg-slate-950/40 rounded-xl border border-slate-800/80 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
                   <Database className="w-4 h-4" />
                   <span>Cloud DB Synchronized</span>
                 </div>
@@ -174,8 +174,8 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
               </div>
 
               {errorMsg && (
-                <div className="p-3 bg-rose-950/20 border border-rose-900/30 rounded-xl text-xs text-rose-300 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="p-3 bg-rose-950/20 border border-rose-900/30 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}

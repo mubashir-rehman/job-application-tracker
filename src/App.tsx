@@ -27,7 +27,9 @@ import {
   X,
   Trash2,
   Sun,
-  Moon
+  Moon,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
@@ -48,6 +50,13 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState<boolean>(() => {
+    return localStorage.getItem('hiretrack_show_telemetry') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hiretrack_show_telemetry', String(showTelemetry));
+  }, [showTelemetry]);
 
   // Synchronize document theme class
   useEffect(() => {
@@ -387,7 +396,7 @@ export default function App() {
               className="p-2 hover:bg-slate-800/60 text-slate-400 hover:text-indigo-400 rounded-xl border border-slate-800/80 transition-all cursor-pointer hidden lg:flex"
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500 dark:text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
             </button>
           </div>
 
@@ -398,7 +407,7 @@ export default function App() {
               className="p-2 hover:bg-slate-800/60 text-slate-400 hover:text-indigo-400 rounded-xl border border-slate-800/80 transition-all cursor-pointer"
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500 dark:text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
             </button>
 
             <button 
@@ -519,16 +528,16 @@ export default function App() {
         
         {isLoading && (
           <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
-            <RefreshCw className="w-4.5 h-4.5 text-indigo-400 animate-spin" />
+            <RefreshCw className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400 animate-spin" />
             <span className="text-xs font-bold text-slate-300">Synchronizing database with Supabase cloud...</span>
           </div>
         )}
 
         {dbError && (
           <div className="bg-slate-900 border border-amber-500/30 p-5 rounded-2xl text-xs text-slate-300 mb-6 max-w-2xl shadow-lg flex flex-col sm:flex-row items-start gap-3.5">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
             <div className="space-y-2 flex-1">
-              <span className="font-bold text-amber-400 block uppercase tracking-wider text-[10px]">Cloud Connection Status</span>
+              <span className="font-bold text-amber-600 dark:text-amber-400 block uppercase tracking-wider text-[10px]">Cloud Connection Status</span>
               <p className="leading-relaxed font-medium">{dbError}</p>
             </div>
           </div>
@@ -540,8 +549,16 @@ export default function App() {
             {/* Upper Header Row */}
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-6">
               <div>
-                <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight flex items-center gap-2">
-                  Application Pipeline
+                <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight flex flex-wrap items-center gap-3">
+                  <span>Application Pipeline</span>
+                  <button
+                    onClick={() => setShowTelemetry(!showTelemetry)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl border border-slate-800 shadow-sm text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer h-7"
+                    title={showTelemetry ? "Hide Analytics Dashboard" : "Show Analytics Dashboard"}
+                  >
+                    {showTelemetry ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showTelemetry ? "Hide Telemetry" : "Show Telemetry"}</span>
+                  </button>
                 </h1>
                 <p className="text-slate-400 text-sm font-medium mt-1">
                   Tracking active developer interviews, logistics, and feedback cycles.
@@ -575,7 +592,19 @@ export default function App() {
             <StatsGrid applications={applications} />
 
             {/* Candidate Performance Index & System Telemetry */}
-            <PerformanceTelemetry applications={applications} />
+            <AnimatePresence initial={false}>
+              {showTelemetry && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <PerformanceTelemetry applications={applications} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Pipeline search, multi filter, table-grid list */}
             <ApplicationTable 
@@ -601,10 +630,10 @@ export default function App() {
               <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-indigo-400" />
+                    <Terminal className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     <h3 className="font-extrabold text-slate-100 text-base">HPC & CUDA Optimizations</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-indigo-950/40 text-indigo-400 px-2 py-0.5 rounded border border-indigo-900/40">GPU Core</span>
+                  <span className="text-[10px] font-bold bg-indigo-100/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded border border-indigo-200/50 dark:border-indigo-900/40">GPU Core</span>
                 </div>
                 
                 <p className="text-xs text-slate-400 leading-relaxed">
@@ -631,10 +660,10 @@ export default function App() {
               <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <BrainCircuit className="w-5 h-5 text-indigo-400" />
+                    <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     <h3 className="font-extrabold text-slate-100 text-base">Distributed Backend Ledgers</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-blue-950/40 text-blue-400 px-2 py-0.5 rounded border border-blue-900/40">Systems</span>
+                  <span className="text-[10px] font-bold bg-blue-100/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50 dark:border-blue-900/40">Systems</span>
                 </div>
                 
                 <p className="text-xs text-slate-400 leading-relaxed">

@@ -188,7 +188,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
         <div className="bg-slate-950 border-b border-slate-900/80 p-6 flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-4">
           <div className="flex items-center gap-4">
             {/* Logo Initial */}
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 flex items-center justify-center font-black font-display text-xl shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 flex items-center justify-center font-black font-display text-xl shrink-0">
               {editedApp.companyName.charAt(0)}
             </div>
             <div>
@@ -204,7 +204,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 <span className="text-slate-600 font-bold">•</span>
                 <span className="text-[11px] font-bold font-mono text-slate-400">{editedApp.location}</span>
                 <span className="text-slate-600 font-bold">•</span>
-                <span className="text-[11px] font-bold font-mono text-indigo-400">{editedApp.salaryRange}</span>
+                <span className="text-[11px] font-bold font-mono text-indigo-600 dark:text-indigo-400">{editedApp.salaryRange}</span>
               </div>
             </div>
           </div>
@@ -426,7 +426,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                                     className={`px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                                       phase.status === st 
                                         ? st === 'completed'
-                                          ? 'bg-emerald-500/15 text-emerald-400 font-black'
+                                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black'
                                           : st === 'active'
                                             ? 'bg-indigo-600 text-white'
                                             : st === 'skipped'
@@ -466,7 +466,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                             
                             {/* Positive Signals - Left Green Border */}
                             <div className="bg-emerald-500/[0.02] border border-emerald-500/10 border-l-4 border-l-emerald-500 rounded-2xl p-4.5 space-y-2">
-                              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
                                 <ThumbsUp className="w-3.5 h-3.5" />
                                 Positive Signals & Pros
                               </label>
@@ -481,7 +481,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
                             {/* Red Flags / Risk Areas - Left Red Border */}
                             <div className="bg-rose-500/[0.02] border border-rose-500/10 border-l-4 border-l-rose-500 rounded-2xl p-4.5 space-y-2">
-                              <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <label className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
                                 <ThumbsDown className="w-3.5 h-3.5" />
                                 Risk Areas / Red Flags
                               </label>
@@ -510,8 +510,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
                             {/* Direct Quotes block (interviewer feedback) */}
                             <div className="space-y-1.5">
-                              <label className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">Direct Interviewer Quotes</label>
-                              <div className="relative bg-slate-950/60 p-3 rounded-2xl border border-indigo-900/20">
+                              <label className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Direct Interviewer Quotes</label>
+                              <div className="relative bg-slate-950/60 p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/20">
                                 <div className="absolute top-2.5 right-3 text-indigo-500/10 font-serif text-4xl select-none leading-none">“</div>
                                 <textarea
                                   rows={3}
@@ -539,7 +539,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 {/* Employment card */}
                 <div className="glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-4 lg:col-span-2">
                   <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                    <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                     Employment & Position Logistics
                   </h4>
                   
@@ -595,7 +595,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 {/* Logistics & HR card */}
                 <div className="glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-4 lg:col-span-1">
                   <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-indigo-400" />
+                    <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                     Channels & Points of Contact
                   </h4>
 
@@ -650,7 +650,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                             href={editedApp.resumeLink} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="p-2.5 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-900/30 transition-all cursor-pointer"
+                            className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-250 dark:border-indigo-900/30 transition-all cursor-pointer"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -673,7 +673,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                             href={editedApp.portfolioLink} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="p-2.5 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-900/30 transition-all cursor-pointer"
+                            className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-250 dark:border-indigo-900/30 transition-all cursor-pointer"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -708,7 +708,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
                 <div className="border-b border-slate-900 pb-4">
                   <h3 className="text-lg font-black flex items-center gap-2 text-slate-100">
-                    <Award className="w-5 h-5 text-indigo-400" />
+                    <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     Calibration Post-Mortem & Skill Gaps
                   </h3>
                   <p className="text-slate-400 text-xs mt-1">
@@ -720,7 +720,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   {/* Action Gaps */}
                   <div className="lg:col-span-2 space-y-4">
                     <div>
-                      <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest block mb-2">
+                      <label className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest block mb-2">
                         Skill Debt & Gaps Logged
                       </label>
                       <textarea
@@ -733,7 +733,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-2">
+                      <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2">
                         Continuous Preparation Notes
                       </label>
                       <textarea
@@ -754,7 +754,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           Process Score
                         </label>
-                        <span className="text-sm font-black text-indigo-400 font-mono">
+                        <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
                           {editedApp.postMortem.selfRating} / 10
                         </span>
                       </div>
@@ -808,13 +808,13 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                           >
                             <span className="flex items-center gap-2 truncate">
                               {res.type === 'guide' ? (
-                                <BookOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                               ) : res.type === 'video' ? (
-                                <Play className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                <Play className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
                               ) : (
-                                <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                               )}
-                              <span className="truncate group-hover:text-indigo-400 transition-colors">{res.title}</span>
+                              <span className="truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{res.title}</span>
                             </span>
                             <ExternalLink className="w-3 h-3 text-slate-600 shrink-0 group-hover:text-slate-400 transition" />
                           </a>
