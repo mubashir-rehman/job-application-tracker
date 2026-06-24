@@ -17,7 +17,6 @@ import {
   User, 
   BrainCircuit, 
   ChevronRight,
-  BookOpen,
   Database,
   RefreshCw,
   AlertTriangle,
@@ -26,7 +25,6 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
-import { SupabaseBridge } from './components/SupabaseBridge';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
 
@@ -34,7 +32,7 @@ export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isNewAppOpen, setIsNewAppOpen] = useState(false);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'matrix' | 'about' | 'supabase'>('dashboard');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'matrix'>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -164,9 +162,9 @@ export default function App() {
           
           if (err && err.message) {
             if (err.message.includes("relation") && (err.message.includes("does not exist") || err.message.includes("not found"))) {
-              userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please click 'Supabase Bridge' in the sidebar, copy the SQL initialization script, and execute it in your Supabase SQL Editor to create the table!";
+              userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please refer to 'supabase/migrations/' or the project README.md to run the database setup scripts inside your Supabase SQL Editor!";
             } else if ((err.message.includes("column") || err.message.includes("attribute")) && (err.message.toLowerCase().includes("userid") || err.message.toLowerCase().includes("user_id"))) {
-              userFriendlyMessage = "Database Schema Error: The relational 'userId' column is missing or misconfigured in your 'job_applications' table. Please go to 'Supabase Bridge' in the sidebar, copy the SQL initialization script, and execute the 'alter table' migration line to append the relational column!";
+              userFriendlyMessage = "Database Schema Error: The relational 'userId' column is missing or misconfigured in your 'job_applications' table. Please run the SQL schema migration script from 'supabase/migrations/20260624000000_setup_job_applications.sql' in your Supabase SQL Editor!";
             } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("network")) {
               userFriendlyMessage = "Network Connection Error: Unable to reach Supabase. Check your internet connection or verify VITE_SUPABASE_URL in your Vercel configurations.";
             } else if (err.message.includes("JWT") || err.message.includes("invalid") || err.message.includes("key")) {
@@ -369,29 +367,7 @@ export default function App() {
             <span>Technical Skill Matrix</span>
           </button>
 
-          <button
-            onClick={() => setActiveSidebarTab('about')}
-            className={`flex items-center gap-3 w-full p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all ${
-              activeSidebarTab === 'about' 
-                ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30' 
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-            }`}
-          >
-            <BookOpen className="w-4.5 h-4.5" />
-            <span>Developer Guide</span>
-          </button>
 
-          <button
-            onClick={() => setActiveSidebarTab('supabase')}
-            className={`flex items-center gap-3 w-full p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all ${
-              activeSidebarTab === 'supabase' 
-                ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30' 
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-            }`}
-          >
-            <Database className="w-4.5 h-4.5" />
-            <span>Supabase Bridge</span>
-          </button>
 
           {user && (
             <button
@@ -484,15 +460,6 @@ export default function App() {
             <div className="space-y-2 flex-1">
               <span className="font-bold text-amber-400 block uppercase tracking-wider text-[10px]">Cloud Connection Status</span>
               <p className="leading-relaxed font-medium">{dbError}</p>
-              {dbError.includes("table was not found") && (
-                <button
-                  onClick={() => setActiveSidebarTab('supabase')}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] uppercase tracking-wider transition cursor-pointer flex items-center gap-1 mt-1"
-                >
-                  <Database className="w-3.5 h-3.5" />
-                  <span>Get SQL schema script</span>
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -619,51 +586,7 @@ export default function App() {
           </div>
         )}
 
-        {/* DEVELOPER GUIDE TAB */}
-        {activeSidebarTab === 'about' && (
-          <div className="space-y-8" id="tab-guide-view">
-            <header className="border-b border-slate-800 pb-6">
-              <h1 className="text-3xl font-black font-display text-white tracking-tight">HireTrack Developer Guide</h1>
-              <p className="text-slate-400 text-sm font-medium mt-1">
-                A modern framework overview for tracking complex technical pipelines.
-              </p>
-            </header>
- 
-            <div className="glass-panel p-8 rounded-3xl border border-slate-800 max-w-4xl space-y-6">
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-white">Phase 1: Glassmorphic PoC with Full State Engine</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  This local interface demonstrates both premium front-end fidelity and highly detailed data fields. All edits, 7-phase remarks, pros, cons, and self-ratings update dynamically in real-time, saved directly in your browser's persistent cache.
-                </p>
-              </div>
- 
-              <div className="space-y-3 border-t border-slate-800 pt-6">
-                <h3 className="text-lg font-black text-indigo-400 flex items-center gap-1.5">
-                  <TrendingUp className="w-5 h-5" />
-                  Transitioning to Phase 2 (Production Relational database / Supabase)
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  When you are ready to migrate to Phase 2, follow these steps:
-                </p>
-                <ol className="list-decimal list-inside text-xs text-slate-300 space-y-2 leading-relaxed">
-                  <li>Use the <strong>"Export JSON"</strong> button to download a complete backup containing your active tracking records.</li>
-                  <li>Our Phase 2 schema maps each application cleanly to a relational database table with foreign keys for the seven child-timeline stages.</li>
-                  <li>Enable Supabase/Firebase Auth to authenticate logins. Each user tracks their own secure pipelines.</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* SUPABASE BRIDGE TAB */}
-        {activeSidebarTab === 'supabase' && (
-          <SupabaseBridge 
-            applications={applications}
-            onSyncComplete={(updatedApps) => setApplications(updatedApps)}
-            onRefreshFromCloud={handleRefreshFromCloud}
-            user={user}
-          />
-        )}
 
       </main>
 

@@ -58,11 +58,33 @@ create table if not exists public.job_applications (
   "phases" jsonb not null default '[]'::jsonb,
   "postMortem" jsonb not null default '{}'::jsonb,
   "createdAt" text not null,
-  "userId" text -- Associates opportunities with signed-in users
+  "userId" uuid references auth.users(id) on delete cascade -- Relational foreign key linked directly to Supabase Auth users
 );
 
--- Disable Row Level Security (RLS) for simple integration or configure an active policy:
-alter table public.job_applications disable row level security;
+-- Enable Row Level Security (RLS) for enterprise-grade privacy and data isolation
+alter table public.job_applications enable row level security;
+
+-- Create RLS Policies to automatically isolate and protect user-specific data
+drop policy if exists "Users can view own applications" on public.job_applications;
+create policy "Users can view own applications" 
+  on public.job_applications for select 
+  using (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can insert own applications" on public.job_applications;
+create policy "Users can insert own applications" 
+  on public.job_applications for insert 
+  with check (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can update own applications" on public.job_applications;
+create policy "Users can update own applications" 
+  on public.job_applications for update 
+  using (auth.uid() = "userId" or "userId" is null)
+  with check (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can delete own applications" on public.job_applications;
+create policy "Users can delete own applications" 
+  on public.job_applications for delete 
+  using (auth.uid() = "userId" or "userId" is null);
 ```
 
 ### 2. Configure Google Sign-In Provider (Optional but Recommended)
