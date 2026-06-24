@@ -44,34 +44,50 @@ export function StatsGrid({ applications }: StatsGridProps) {
 
   const avgSalary = calculateAverageSalary();
 
+  // Active pipelines (neither rejected nor successfully completed offer)
+  const activeCount = applications.filter(app => {
+    const s = app.currentStatus.toLowerCase();
+    return !s.includes('reject') && !s.includes('fail') && !s.includes('archive');
+  }).length;
+
+  const conversionRate = total > 0 ? Math.round((offersCount / total) * 100) : 0;
+
   const stats = [
     {
       label: 'Total Applications',
       value: total,
+      subtext: `↑ ${activeCount} active pipelines`,
+      subtextColorClass: 'text-indigo-400',
       icon: Briefcase,
       colorClass: 'text-slate-300 bg-slate-800/80 border-slate-700',
-      glowClass: 'hover:shadow-slate-900/50',
+      glowClass: 'hover:shadow-indigo-500/10 hover:border-indigo-500/20',
     },
     {
       label: 'Interviews Scheduled',
       value: interviewsCount,
+      subtext: 'Pending technical checks',
+      subtextColorClass: 'text-amber-400/80',
       icon: Calendar,
       colorClass: 'text-indigo-400 bg-indigo-950/40 border-indigo-900/40',
-      glowClass: 'hover:shadow-indigo-950/40',
+      glowClass: 'hover:shadow-amber-500/10 hover:border-amber-500/20',
     },
     {
       label: 'Offers Secured',
       value: offersCount,
+      subtext: `Win rate: ${conversionRate}%`,
+      subtextColorClass: 'text-emerald-400',
       icon: Award,
       colorClass: 'text-emerald-400 bg-emerald-950/40 border-emerald-900/40',
-      glowClass: 'hover:shadow-emerald-950/40',
+      glowClass: 'hover:shadow-emerald-500/10 hover:border-emerald-500/20',
     },
     {
       label: 'Avg Target Salary',
       value: avgSalary,
+      subtext: 'Market index value',
+      subtextColorClass: 'text-slate-400',
       icon: Banknote,
       colorClass: 'text-blue-400 bg-blue-950/40 border-blue-900/40',
-      glowClass: 'hover:shadow-blue-950/40',
+      glowClass: 'hover:shadow-blue-500/10 hover:border-blue-500/20',
     }
   ];
 
@@ -83,14 +99,17 @@ export function StatsGrid({ applications }: StatsGridProps) {
           <Card
             key={i}
             id={`stat-card-${i}`}
-            className={`glass-panel rounded-2xl shadow-sm border border-slate-800/40 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:translate-y-[-2px] ${stat.glowClass}`}
+            className={`glass-panel rounded-2xl border border-slate-800/60 flex items-center justify-between transition-all duration-300 hover:-translate-y-1 ${stat.glowClass}`}
           >
             <CardContent className="flex items-center justify-between w-full p-6">
               <div>
-                <p className="text-slate-500 text-xs uppercase tracking-wider font-bold">{stat.label}</p>
-                <h3 className="text-3xl font-extrabold font-display text-white mt-2">{stat.value}</h3>
+                <p className="text-slate-500 text-[10px] uppercase tracking-wider font-extrabold">{stat.label}</p>
+                <h3 className="text-3xl font-black font-display text-white mt-1.5">{stat.value}</h3>
+                <p className={`text-[11px] font-bold font-mono mt-2 flex items-center gap-1 ${stat.subtextColorClass}`}>
+                  {stat.subtext}
+                </p>
               </div>
-              <div className={`p-3.5 rounded-xl border ${stat.colorClass} flex items-center justify-center`}>
+              <div className={`p-3 rounded-xl border ${stat.colorClass} flex items-center justify-center shrink-0 shadow-sm`}>
                 <Icon className="w-5 h-5" />
               </div>
             </CardContent>

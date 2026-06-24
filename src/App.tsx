@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { JobApplication } from './types';
 import { INITIAL_APPLICATIONS } from './data';
 import { StatsGrid } from './components/StatsGrid';
+import { PerformanceTelemetry } from './components/PerformanceTelemetry';
 import { ApplicationTable } from './components/ApplicationTable';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
@@ -534,6 +535,9 @@ export default function App() {
 
             {/* Metrics cards dynamic state */}
             <StatsGrid applications={applications} />
+
+            {/* Candidate Performance Index & System Telemetry */}
+            <PerformanceTelemetry applications={applications} />
 
             {/* Pipeline search, multi filter, table-grid list */}
             <ApplicationTable 
