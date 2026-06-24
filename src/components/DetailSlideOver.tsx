@@ -76,10 +76,10 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
   if (!editedApp) return null;
 
-  const togglePhaseExpanded = (index: number) => {
+  const togglePhaseExpanded = (index: number, forceValue?: boolean) => {
     setExpandedPhases(prev => ({
       ...prev,
-      [index]: !prev[index]
+      [index]: forceValue !== undefined ? forceValue : !prev[index]
     }));
   };
 
@@ -249,50 +249,6 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
           </div>
         </div>
 
-        {/* Horizontal Progress Tracker (LinearIssueStyle) */}
-        {activeTab === 'timeline' && (
-          <div className="bg-slate-950/40 border-b border-slate-900/80 px-8 py-3.5 shrink-0 overflow-x-auto">
-            <div className="flex items-center justify-between min-w-[700px] gap-2">
-              {editedApp.phases.map((ph, idx) => {
-                const isComp = ph.status === 'completed';
-                const isAct = ph.status === 'active';
-                return (
-                  <div key={idx} className="flex-1 flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      {/* Circle badge */}
-                      <div 
-                        onClick={() => handlePhaseChange(idx, 'status', isComp ? 'active' : isAct ? 'upcoming' : 'completed')}
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] cursor-pointer transition-all border shrink-0 ${
-                          isComp 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                            : isAct 
-                              ? 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-500/30 animate-pulse' 
-                              : 'bg-slate-900 text-slate-500 border-slate-800'
-                        }`}
-                        title="Click to toggle stage status"
-                      >
-                        {isComp ? '✓' : idx + 1}
-                      </div>
-                      {/* Text */}
-                      <div className="min-w-0">
-                        <p className={`text-[10px] font-extrabold uppercase font-mono tracking-wide ${isAct ? 'text-indigo-400' : isComp ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {ph.name.replace(/^Phase \d+:\s*/, '').split(' ')[0]}
-                        </p>
-                        <p className="text-[8px] text-slate-500 font-bold truncate max-w-[80px]" title={ph.name.replace(/^Phase \d+:\s*/, '')}>
-                          {ph.name.replace(/^Phase \d+:\s*/, '')}
-                        </p>
-                      </div>
-                    </div>
-                    {idx < 6 && (
-                      <div className={`h-[1px] flex-1 min-w-[12px] ${isComp ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Tab Selection Layout */}
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
           <div className="bg-slate-950/20 px-8 pt-1.5 border-b border-slate-900/60 flex shrink-0">
@@ -325,36 +281,37 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
           <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 bg-slate-950/10">
             
             {/* TAB 1: TIMELINE */}
-            <TabsContent value="timeline" className="outline-none space-y-8 pl-4 py-2 relative mt-0">
-              {/* Dynamic vertical connector line */}
-              <div className="absolute left-8 top-4 bottom-8 w-[1px] bg-slate-900" />
+            <TabsContent value="timeline" className="outline-none mt-0 max-w-4xl mx-auto pl-4">
+              <div className="space-y-8 relative pl-4">
+                {/* Dynamic vertical connector line */}
+                <div className="absolute left-8 top-4 bottom-8 w-[1.5px] bg-slate-850" />
 
-              {editedApp.phases.map((phase, i) => {
-                const isActive = phase.status === 'active';
-                const isCompleted = phase.status === 'completed';
-                const isExpanded = !!expandedPhases[i];
-                return (
-                  <div key={i} className="relative pl-12 group" id={`phase-row-${i}`}>
-                    
-                    {/* Circle icon on the left vertical thread line */}
-                    <div className="absolute left-3 top-1.5 z-10">
-                      <div 
-                        onClick={() => {
-                          const nextStatus = isCompleted ? 'active' : isActive ? 'skipped' : 'completed';
-                          handlePhaseChange(i, 'status', nextStatus);
-                        }}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ring-4 ring-slate-950 cursor-pointer shadow-md transition-all ${
-                          isCompleted 
-                            ? 'bg-emerald-500 text-white' 
-                            : isActive 
-                              ? 'bg-indigo-600 text-white ring-indigo-500/20 scale-110 shadow-lg shadow-indigo-600/20'
-                              : 'bg-slate-900 text-slate-500 border border-slate-800'
-                        }`}
-                        title="Click to quickly toggle stage status"
-                      >
-                        {isCompleted ? '✓' : i + 1}
-                      </div>
+                {editedApp.phases.map((phase, i) => {
+                  const isActive = phase.status === 'active';
+                  const isCompleted = phase.status === 'completed';
+                  const isExpanded = !!expandedPhases[i];
+                  return (
+                    <div key={i} className="relative pl-12 group" id={`phase-row-${i}`}>
+                  
+                  {/* Circle icon on the left vertical thread line */}
+                  <div className="absolute left-3 top-1.5 z-10">
+                    <div 
+                      onClick={() => {
+                        const nextStatus = isCompleted ? 'active' : isActive ? 'skipped' : 'completed';
+                        handlePhaseChange(i, 'status', nextStatus);
+                      }}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ring-4 ring-slate-950 cursor-pointer shadow-md transition-all ${
+                        isCompleted 
+                          ? 'bg-emerald-500 text-white' 
+                          : isActive 
+                            ? 'bg-indigo-600 text-white ring-indigo-500/20 scale-110 shadow-lg shadow-indigo-600/20'
+                            : 'bg-slate-900 text-slate-500 border border-slate-800'
+                      }`}
+                      title="Click to quickly toggle stage status"
+                    >
+                      {isCompleted ? '✓' : i + 1}
                     </div>
+                  </div>
 
                     {/* Timeline card container */}
                     <div className={`glass-panel p-6 rounded-[2rem] border transition-all duration-300 ${
@@ -530,6 +487,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   </div>
                 );
               })}
+              </div>
             </TabsContent>
 
             {/* TAB 2: CORE DETAILS & LOGISTICS */}
