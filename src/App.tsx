@@ -622,7 +622,7 @@ export default function App() {
 
       </main>
 
-      {/* 3. APPLICATION SLIDE-OVER DETAIL PANEL */}
+      {/* 3. CENTERED DETAILED JOB APPLICATION DIALOG */}
       <DetailSlideOver 
         application={selectedApplication}
         isOpen={selectedApplication !== null}

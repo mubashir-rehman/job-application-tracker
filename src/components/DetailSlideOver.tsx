@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { JobApplication, InterviewPhase, WorkModelType, AppliedViaType } from '../types';
-import { X, Calendar, Edit, Link, ExternalLink, Award, FileText, CheckCircle2, Circle, Star, Save } from 'lucide-react';
+import { X, Calendar, ExternalLink, Award, CheckCircle2, Circle, Star, Save, Database, Info, Layers, ListChecks } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface DetailSlideOverProps {
   application: JobApplication | null;
@@ -24,7 +28,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     }
   }, [application]);
 
-  if (!isOpen || !editedApp) return null;
+  if (!editedApp) return null;
 
   const handleFieldChange = (field: keyof JobApplication, value: any) => {
     if (!editedApp) return;
@@ -79,7 +83,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'active')}
-          className="z-10 w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white ring-4 ring-slate-950 shadow transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-white ring-4 ring-slate-900 shadow transition-all duration-150 cursor-pointer"
           title="Mark active"
         >
           <CheckCircle2 className="w-5 h-5" />
@@ -90,7 +94,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'completed')}
-          className="z-10 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white ring-4 ring-slate-950 ring-offset-1 shadow-md animate-pulse transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white ring-4 ring-slate-900 shadow-md animate-pulse transition-all duration-150 cursor-pointer"
           title="Mark complete"
         >
           <span className="text-xs font-black">{index + 1}</span>
@@ -101,7 +105,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       return (
         <button 
           onClick={() => handlePhaseChange(index, 'status', 'upcoming')}
-          className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white ring-4 ring-slate-950 shadow transition-all duration-150"
+          className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white ring-4 ring-slate-900 shadow transition-all duration-150 cursor-pointer"
           title="Restore"
         >
           <Circle className="w-4 h-4 line-through opacity-70" />
@@ -111,7 +115,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     return (
       <button 
         onClick={() => handlePhaseChange(index, 'status', 'active')}
-        className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-750 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:border-indigo-500 border border-slate-700/50 ring-4 ring-slate-950 shadow-sm transition-all duration-150"
+        className="z-10 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-750 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:border-indigo-500 border border-slate-700/50 ring-4 ring-slate-900 shadow-sm transition-all duration-150 cursor-pointer"
         title="Mark active"
       >
         <span className="text-xs font-bold">{index + 1}</span>
@@ -119,99 +123,90 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     );
   };
 
-  return (
-    <>
-      {/* Backdrop overlay */}
-      <div 
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 transition-opacity"
-        onClick={onClose}
-        id="slideover-backdrop"
-      />
+  const getStatusBadgeStyle = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes('offer')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    if (s.includes('reject') || s.includes('archived') || s.includes('failed')) return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    if (s.includes('phone') || s.includes('screen')) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+  };
 
-      {/* Slide-over panel container */}
-      <div 
-        className="fixed right-0 top-0 h-full w-full max-w-3xl bg-slate-950 shadow-2xl z-50 overflow-y-auto flex flex-col border-l border-slate-800"
-        id="slideover-panel"
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent 
+        className="sm:max-w-4xl lg:max-w-5xl h-[88vh] md:h-[82vh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl focus:outline-none"
+        showCloseButton={false}
       >
         {/* Banner Sticky Header */}
-        <div className="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-30 flex justify-between items-center shadow-sm">
+        <div className="bg-slate-900/60 border-b border-slate-800/80 p-6 flex justify-between items-center shrink-0">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-black font-display text-white">{editedApp.companyName}</h2>
-              <span className={`text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full border ${
-                editedApp.currentStatus.toLowerCase().includes('offer') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-              }`}>
+              <h2 className="text-2xl font-black font-display text-white tracking-tight">{editedApp.companyName}</h2>
+              <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider px-3 py-0.5 rounded-full border ${getStatusBadgeStyle(editedApp.currentStatus)}`}>
                 {editedApp.currentStatus}
-              </span>
+              </Badge>
             </div>
-            <p className="text-sm font-semibold text-slate-400 mt-1">{editedApp.targetRole}</p>
+            <p className="text-xs font-semibold text-slate-400 mt-1">{editedApp.targetRole}</p>
           </div>
 
           <div className="flex items-center gap-3">
             {/* Save Button */}
-            <button
+            <Button
               onClick={handleSave}
               id="save-application-btn"
-              className={`px-4.5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm h-auto ${
                 isSaved 
                   ? 'bg-emerald-500 text-white' 
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
               }`}
             >
               <Save className="w-4 h-4" />
               {isSaved ? 'Changes Saved!' : 'Save Changes'}
-            </button>
+            </Button>
 
             {/* Close Cross */}
             <button 
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-full transition"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Tab Controls */}
-        <div className="bg-slate-900 px-8 pt-4 border-b border-slate-800 flex gap-6">
-          <button
-            onClick={() => setActiveTab('timeline')}
-            className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
-              activeTab === 'timeline' 
-                ? 'border-indigo-500 text-white' 
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Timeline & 7-Phases
-          </button>
-          <button
-            onClick={() => setActiveTab('core')}
-            className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
-              activeTab === 'core' 
-                ? 'border-indigo-500 text-white' 
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Core Details & Logistics
-          </button>
-          <button
-            onClick={() => setActiveTab('mortem')}
-            className={`pb-3 text-sm font-bold transition-all border-b-2 relative ${
-              activeTab === 'mortem' 
-                ? 'border-indigo-500 text-white' 
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Post-Mortem & Skills
-          </button>
-        </div>
+        {/* Tab Selection Layout */}
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
+          <div className="bg-slate-900/30 px-6 pt-2 border-b border-slate-800/60 flex shrink-0">
+            <TabsList variant="line" className="gap-6 bg-transparent p-0">
+              <TabsTrigger 
+                value="timeline" 
+                className="pb-3 text-xs font-bold transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer"
+              >
+                <ListChecks className="w-3.5 h-3.5 mr-1" />
+                Timeline & 7-Phases
+              </TabsTrigger>
+              <TabsTrigger 
+                value="core" 
+                className="pb-3 text-xs font-bold transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer"
+              >
+                <Info className="w-3.5 h-3.5 mr-1" />
+                Core Details & Logistics
+              </TabsTrigger>
+              <TabsTrigger 
+                value="mortem" 
+                className="pb-3 text-xs font-bold transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5 mr-1" />
+                Post-Mortem & Skills
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        {/* Main Panel Content */}
-        <div className="flex-1 p-8">
-          
-          {/* TAB 1: TIMELINE & 7 PHASES */}
-          {activeTab === 'timeline' && (
-            <div className="space-y-10 relative pl-4" id="timeline-tab-content">
+          {/* Tab Content Box - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 bg-slate-950/40">
+            
+            {/* TAB 1: TIMELINE */}
+            <TabsContent value="timeline" className="outline-none space-y-8 pl-4 py-2 relative mt-0">
               {/* Dynamic vertical link line */}
               <div className="absolute left-8 top-3 bottom-8 w-0.5 bg-slate-800" />
 
@@ -226,7 +221,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     </div>
 
                     {/* Timeline card */}
-                    <div className={`glass-panel p-5.5 rounded-2xl border transition-all duration-200 ${
+                    <div className={`glass-panel p-5 rounded-2xl border transition-all duration-200 ${
                       isActive 
                         ? 'border-indigo-500/30 bg-slate-900 shadow-md ring-2 ring-indigo-500/10' 
                         : isCompleted
@@ -235,7 +230,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     }`}>
                       
                       {/* Card title and Date */}
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3.5 mb-4">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800/80 pb-3 mb-4">
                         <div>
                           <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Stage {i+1}</span>
                           <h4 className={`font-extrabold text-sm uppercase tracking-tight ${isActive ? 'text-indigo-400' : 'text-slate-100'}`}>
@@ -321,19 +316,16 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   </div>
                 );
               })}
-            </div>
-          )}
+            </TabsContent>
 
-          {/* TAB 2: CORE DETAILS & LOGISTICS */}
-          {activeTab === 'core' && (
-            <div className="space-y-6" id="core-tab-content">
-              
-              {/* Quick Info Grid */}
+            {/* TAB 2: CORE DETAILS & LOGISTICS */}
+            <TabsContent value="core" className="outline-none space-y-6 mt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Employment card */}
-                <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 shadow-sm space-y-4">
+                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-800/60 pb-2 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
                     Employment Details
                   </h4>
                   
@@ -389,9 +381,10 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 </div>
 
                 {/* Logistics & HR card */}
-                <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
-                    HR & Application Link Logistics
+                <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 shadow-sm space-y-4">
+                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-800/60 pb-2 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-indigo-400" />
+                    HR & Application Logistics
                   </h4>
 
                   <div className="space-y-4">
@@ -451,9 +444,9 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                               href={editedApp.resumeLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0"
+                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0 cursor-pointer"
                             >
-                              <ExternalLink className="w-4.5 h-4.5" />
+                              <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           )}
                         </div>
@@ -474,9 +467,9 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                               href={editedApp.portfolioLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0"
+                              className="p-2 bg-indigo-950/40 hover:bg-indigo-950 text-indigo-400 rounded-lg flex items-center justify-center shrink-0 cursor-pointer"
                             >
-                              <ExternalLink className="w-4.5 h-4.5" />
+                              <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           )}
                         </div>
@@ -487,8 +480,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                 </div>
 
                 {/* Key JD Requirements */}
-                <div className="col-span-1 md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 shadow-sm space-y-3">
-                  <h4 className="font-extrabold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-2">
+                <div className="col-span-1 md:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800/80 shadow-sm space-y-3">
+                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-800/60 pb-2">
                     Key Job Description Requirements & Stack
                   </h4>
                   <textarea
@@ -500,19 +493,17 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   />
                 </div>
               </div>
-            </div>
-          )}
+            </TabsContent>
 
-          {/* TAB 3: POST-MORTEM */}
-          {activeTab === 'mortem' && (
-            <div className="space-y-6" id="mortem-tab-content">
-              <div className="glass-card-dark text-white p-8 rounded-3xl space-y-6 shadow-xl relative overflow-hidden">
+            {/* TAB 3: POST-MORTEM */}
+            <TabsContent value="mortem" className="outline-none space-y-6 mt-0">
+              <div className="bg-slate-900 border border-slate-800/80 text-white p-6 rounded-2xl space-y-6 shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                   <Award className="w-40 h-40" />
                 </div>
 
-                <div className="border-b border-white/10 pb-4">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
+                <div className="border-b border-slate-800 pb-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-white">
                     <Award className="w-5 h-5 text-indigo-400" />
                     Skills Improvement & Retrospective Analysis
                   </h3>
@@ -532,7 +523,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       value={editedApp.postMortem.skillsImprovements}
                       onChange={(e) => handlePostMortemChange('skillsImprovements', e.target.value)}
                       placeholder="e.g. Brush up on kernel launch grid dimensions, warp occupancy limits, and write-ahead ledger replication strategies..."
-                      className="text-xs bg-slate-800/80 border border-slate-700 p-3.5 rounded-xl w-full text-slate-100 focus:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="text-xs bg-slate-950 border border-slate-800 p-3.5 rounded-xl w-full text-slate-100 focus:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
@@ -546,12 +537,12 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       value={editedApp.postMortem.preparationNotes}
                       onChange={(e) => handlePostMortemChange('preparationNotes', e.target.value)}
                       placeholder="e.g. Work through 5 specific CUDA reduction examples in CUDA samples repository. Read chapter 6 of Designing Data-Intensive Applications."
-                      className="text-xs bg-slate-800/80 border border-slate-700 p-3.5 rounded-xl w-full text-slate-100 focus:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="text-xs bg-slate-950 border border-slate-800 p-3.5 rounded-xl w-full text-slate-100 focus:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
                   {/* Self-Rating bar */}
-                  <div className="border-t border-white/10 pt-4">
+                  <div className="border-t border-slate-800 pt-4">
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-xs text-slate-300 font-bold uppercase tracking-wider">
                         Self-Rating of Process Performance
@@ -592,32 +583,32 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            </TabsContent>
+          </div>
+        </Tabs>
 
-        </div>
-        
         {/* Footer sticky bar */}
-        <div className="bg-slate-900 border-t border-slate-800 p-4 sticky bottom-0 z-30 flex justify-end gap-3 px-6 shadow-inner">
-          <button
+        <div className="bg-slate-900 border-t border-slate-800/80 p-4 flex justify-end gap-3 px-6 shrink-0">
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="px-5 py-2.5 text-sm font-bold text-slate-400 hover:bg-slate-800 rounded-xl transition-all"
+            className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl transition-all h-auto cursor-pointer"
           >
             Close Detail View
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
-            className={`px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm ${
+            className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm h-auto cursor-pointer ${
               isSaved 
-                ? 'bg-emerald-500 text-white' 
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
                 : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow'
             }`}
           >
             <Save className="w-4 h-4" />
             {isSaved ? 'Changes Saved!' : 'Save & Sync Details'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }
