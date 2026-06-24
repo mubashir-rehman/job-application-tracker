@@ -20,11 +20,13 @@ import {
   BookOpen,
   Database,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  LogIn
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
 import { SupabaseBridge } from './components/SupabaseBridge';
+import { LoginScreen } from './components/LoginScreen';
 
 export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -34,6 +36,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
 
   // Listen for session and popup messages
   useEffect(() => {
@@ -41,11 +44,22 @@ export default function App() {
       // Get initial session
       supabase.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user ?? null);
+        if (session?.user) {
+          setIsGuest(false);
+          localStorage.removeItem('hiretrack_is_guest');
+        }
       });
 
       // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         setUser(session?.user ?? null);
+        if (event === 'SIGNED_OUT') {
+          setIsGuest(false);
+          localStorage.removeItem('hiretrack_is_guest');
+        } else if (session?.user) {
+          setIsGuest(false);
+          localStorage.removeItem('hiretrack_is_guest');
+        }
       });
 
       return () => subscription.unsubscribe();
@@ -262,6 +276,22 @@ export default function App() {
     downloadAnchor.remove();
   };
 
+  if (!user && !isGuest) {
+    return (
+      <LoginScreen 
+        onGuestLogin={() => {
+          setIsGuest(true);
+          localStorage.setItem('hiretrack_is_guest', 'true');
+        }}
+        onAuthSuccess={(loggedInUser) => {
+          setUser(loggedInUser);
+          setIsGuest(false);
+          localStorage.removeItem('hiretrack_is_guest');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="ambient-bg min-h-screen text-slate-100/90 font-sans flex flex-col lg:flex-row">
       
@@ -357,13 +387,28 @@ export default function App() {
                 <User className="w-5 h-5 text-indigo-400" />
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-100 truncate">
-                {user ? (user.user_metadata?.full_name || user.email?.split('@')[0]) : "Guest Developer"}
-              </p>
-              <p className="text-[10px] text-slate-400 font-mono uppercase truncate">
-                {user ? "Cloud Workspace" : "Offline Sandbox"}
-              </p>
+            <div className="min-w-0 flex-1 flex justify-between items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-100 truncate">
+                  {user ? (user.user_metadata?.full_name || user.email?.split('@')[0]) : "Guest Developer"}
+                </p>
+                <p className="text-[10px] text-slate-400 font-mono uppercase truncate">
+                  {user ? "Cloud Workspace" : "Offline Sandbox"}
+                </p>
+              </div>
+              {!user && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsGuest(false);
+                    localStorage.removeItem('hiretrack_is_guest');
+                  }}
+                  className="p-1.5 hover:bg-slate-800 text-indigo-400 hover:text-indigo-300 rounded-lg transition shrink-0"
+                  title="Sign In / Setup Cloud"
+                >
+                  <LogIn className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
