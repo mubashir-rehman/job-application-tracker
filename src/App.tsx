@@ -21,12 +21,14 @@ import {
   Database,
   RefreshCw,
   AlertTriangle,
-  LogIn
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
 import { SupabaseBridge } from './components/SupabaseBridge';
 import { LoginScreen } from './components/LoginScreen';
+import { ProfileModal } from './components/ProfileModal';
 
 export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -37,6 +39,7 @@ export default function App() {
   const [dbError, setDbError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Listen for session and popup messages
   useEffect(() => {
@@ -367,11 +370,29 @@ export default function App() {
             <Database className="w-4.5 h-4.5" />
             <span>Supabase Bridge</span>
           </button>
+
+          {user && (
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="lg:hidden flex items-center gap-3 p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight text-slate-400 hover:bg-slate-800/50 hover:text-white transition-all shrink-0"
+              title="My Profile"
+            >
+              <User className="w-4.5 h-4.5 text-indigo-400" />
+              <span>Profile</span>
+            </button>
+          )}
         </nav>
 
         {/* User Block at bottom */}
         <div 
-          onClick={() => setActiveSidebarTab('supabase')}
+          onClick={() => {
+            if (user) {
+              setIsProfileOpen(true);
+            } else {
+              setIsGuest(false);
+              localStorage.removeItem('hiretrack_is_guest');
+            }
+          }}
           className="hidden lg:flex p-6 border-t border-slate-800 items-center justify-between mt-auto bg-slate-950/40 hover:bg-slate-900/60 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-3.5 w-full">
@@ -396,7 +417,18 @@ export default function App() {
                   {user ? "Cloud Workspace" : "Offline Sandbox"}
                 </p>
               </div>
-              {!user && (
+              {user ? (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await supabase.auth.signOut();
+                  }}
+                  className="p-1.5 hover:bg-slate-800 text-rose-400 hover:text-rose-300 rounded-lg transition shrink-0"
+                  title="Sign Out of Cloud"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              ) : (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -626,6 +658,13 @@ export default function App() {
         isOpen={isNewAppOpen}
         onClose={() => setIsNewAppOpen(false)}
         onAddApplication={handleAddApplication}
+      />
+
+      {/* 5. USER PROFILE MODAL */}
+      <ProfileModal 
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
       />
 
     </div>
