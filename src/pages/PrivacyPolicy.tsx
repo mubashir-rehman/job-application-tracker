@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Footer } from './Footer';
 
 export default function PrivacyPolicy() {
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function PrivacyPolicy() {
             <p className="mb-4">
               HireTrack's use and transfer of information received from Google APIs adheres to the 
               <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-cyan-400 hover:text-cyan-300 underline" target="_blank" rel="noopener noreferrer">
-                Google API Services User Data Policy
+                {' '}Google API Services User Data Policy
               </a>, including the Limited Use requirements.
             </p>
             
@@ -110,7 +111,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>Files created by HireTrack in your Google Drive remain there until you manually delete them or revoke access.</li>
               <li>If you revoke Google Drive access or delete your HireTrack account, we will cease creating new files in your Drive.</li>
-              <li>Previously created files remain in your Google Drive Drive storage and are subject to your own data retention practices.</li>
+              <li>Previously created files remain in your Google Drive storage and are subject to your own data retention practices.</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-blue-300 mt-6 mb-3">4.4 Google Account Security</h3>
@@ -302,6 +303,9 @@ export default function PrivacyPolicy() {
           </section>
 
         </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );
