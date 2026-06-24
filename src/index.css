@@ -6,12 +6,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-}
-
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 6px;
@@ -28,48 +22,68 @@
   background: rgba(148, 163, 184, 0.4);
 }
 
-/* Background grid accent - Elegant Dark Theme */
+/* Background grid accent - Light/Dark adaptive */
 .ambient-bg {
-  background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
-              radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
-              #020617; /* bg-slate-950 */
+  background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 45%),
+              radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.04) 0%, transparent 45%),
+              var(--bg-950);
   min-height: 100vh;
 }
 
-/* Custom modern glassmorphism utility classes for dark theme */
+.dark .ambient-bg {
+  background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+              radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+              var(--bg-950);
+}
+
+/* Custom modern glassmorphism utility classes */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.65); /* slate-900 translucency */
+  background: var(--glass-blend);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-panel-hover {
   transition: all 0.2s ease-in-out;
 }
 .glass-panel-hover:hover {
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--bg-900);
   border-color: rgba(99, 102, 241, 0.25);
   transform: translateY(-2px);
-  box-shadow: 0 12px 20px -10px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 12px 20px -10px rgba(99, 102, 241, 0.15);
 }
 
 .glass-card-dark {
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--glass-blend);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
 }
 
 /* Dropdown native options container override */
 select option {
-  background-color: #0f172a !important; /* slate-900 */
-  color: #e2e8f0 !important; /* slate-200 */
+  background-color: var(--bg-900) !important;
+  color: var(--text-200) !important;
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-slate-950: var(--bg-950);
+  --color-slate-900: var(--bg-900);
+  --color-slate-850: var(--bg-850);
+  --color-slate-800: var(--border-800);
+  --color-slate-700: var(--border-700);
+  --color-slate-600: var(--text-600);
+  --color-slate-500: var(--text-500);
+  --color-slate-400: var(--text-400);
+  --color-slate-300: var(--text-300);
+  --color-slate-200: var(--text-200);
+  --color-slate-100: var(--text-100);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -143,6 +157,21 @@ select option {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Slate Variable Theme mappings for Light Mode (Default) */
+  --bg-950: #f8fafc;
+  --bg-900: #ffffff;
+  --bg-850: #f1f5f9;
+  --border-800: #e2e8f0;
+  --border-700: #cbd5e1;
+  --text-600: #475569;
+  --text-500: #64748b;
+  --text-400: #475569;
+  --text-300: #1e293b;
+  --text-200: #0f172a;
+  --text-100: #0f172a;
+  --glass-blend: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(148, 163, 184, 0.12);
 }
 
 .dark {
@@ -177,6 +206,21 @@ select option {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Slate Variable Theme mappings for Dark Mode */
+  --bg-950: #020617;
+  --bg-900: #0f172a;
+  --bg-850: #131c2e;
+  --border-800: #1e293b;
+  --border-700: #334155;
+  --text-600: #475569;
+  --text-500: #64748b;
+  --text-400: #94a3b8;
+  --text-300: #cbd5e1;
+  --text-200: #e2e8f0;
+  --text-100: #f1f5f9;
+  --glass-blend: rgba(15, 23, 42, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.06);
 }
 
 @layer base {

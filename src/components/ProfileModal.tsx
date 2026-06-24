@@ -97,15 +97,15 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
         {/* Header */}
         <div className="p-6 border-b border-slate-800/80 flex justify-between items-center bg-slate-900 z-10">
           <div>
-            <h2 className="text-xl font-black font-display text-white tracking-tight flex items-center gap-2">
-              <User className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-xl font-black font-display text-slate-100 tracking-tight flex items-center gap-2">
+              <User className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               <span>Developer Profile</span>
             </h2>
             <p className="text-slate-400 text-xs mt-0.5 font-medium">Manage your synchronized cloud account</p>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
+            className="p-1.5 hover:bg-slate-800/50 text-slate-400 hover:text-slate-100 rounded-lg transition"
             aria-label="Close Profile"
           >
             <X className="w-5 h-5" />
@@ -119,7 +119,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
               <div className="w-16 h-16 bg-rose-950/40 border border-rose-500/30 rounded-full flex items-center justify-center mx-auto text-rose-400">
                 <ShieldAlert className="w-8 h-8 animate-pulse" />
               </div>
-              <h3 className="text-lg font-bold text-white">Account Deactivated Successfully</h3>
+              <h3 className="text-lg font-bold text-slate-100">Account Deactivated Successfully</h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
                 Your account is now set to <strong className="text-rose-400">Inactive</strong>. Under our 90-day data retention policy, your pipeline tables are scheduled for permanent purge on <span className="text-slate-200 underline font-mono">{new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>.
               </p>
@@ -137,15 +137,15 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-950 border border-indigo-900/40 flex items-center justify-center shadow">
-                    <User className="w-8 h-8 text-indigo-400" />
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-900/40 flex items-center justify-center shadow">
+                    <User className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 )}
                 
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white text-base truncate">{fullName}</h3>
-                    <span className="text-[9px] font-black tracking-widest bg-indigo-950/50 text-indigo-400 border border-indigo-900/40 px-1.5 py-0.5 rounded uppercase font-mono">
+                    <h3 className="font-bold text-slate-100 text-base truncate">{fullName}</h3>
+                    <span className="text-[9px] font-black tracking-widest bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/40 px-1.5 py-0.5 rounded uppercase font-mono">
                       {provider}
                     </span>
                   </div>
@@ -185,7 +185,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                 {/* Sign Out Button */}
                 <button
                   onClick={handleSignOut}
-                  className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-850 text-slate-200 hover:text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 border border-slate-800 cursor-pointer transition-all"
+                  className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-850 text-slate-200 hover:text-slate-100 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border border-slate-800 cursor-pointer transition-all"
                 >
                   <LogOut className="w-4 h-4 text-slate-400" />
                   <span>Sign Out of Account</span>

@@ -105,7 +105,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
               </svg>
               {/* Centered Score */}
               <div className="text-center z-10">
-                <span className="text-4xl font-black font-display text-white tracking-tight leading-none block">{finalScore}</span>
+                <span className="text-4xl font-black font-display text-slate-100 tracking-tight leading-none block">{finalScore}</span>
                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-mono mt-1 block">Readiness</span>
               </div>
             </div>
@@ -136,7 +136,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
                   <Zap className="w-3.5 h-3.5 text-indigo-400" />
                   Coding & Algorithms
                 </span>
-                <span className="text-white font-black font-mono">{(scores.coding).toFixed(1)}/10</span>
+                <span className="text-slate-100 font-black font-mono">{(scores.coding).toFixed(1)}/10</span>
               </div>
               <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${scores.coding * 10}%` }} />
@@ -150,7 +150,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
                   <Cpu className="w-3.5 h-3.5 text-blue-400" />
                   System Architecture
                 </span>
-                <span className="text-white font-black font-mono">{(scores.systemDesign).toFixed(1)}/10</span>
+                <span className="text-slate-100 font-black font-mono">{(scores.systemDesign).toFixed(1)}/10</span>
               </div>
               <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                 <div className="h-full bg-blue-400 rounded-full" style={{ width: `${scores.systemDesign * 10}%` }} />
@@ -164,7 +164,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
                   Technical Communication
                 </span>
-                <span className="text-white font-black font-mono">{(scores.communication).toFixed(1)}/10</span>
+                <span className="text-slate-100 font-black font-mono">{(scores.communication).toFixed(1)}/10</span>
               </div>
               <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                 <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${scores.communication * 10}%` }} />
@@ -178,7 +178,7 @@ export function PerformanceTelemetry({ applications }: PerformanceTelemetryProps
                   <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
                   Product Leadership
                 </span>
-                <span className="text-white font-black font-mono">{(scores.leadership).toFixed(1)}/10</span>
+                <span className="text-slate-100 font-black font-mono">{(scores.leadership).toFixed(1)}/10</span>
               </div>
               <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
                 <div className="h-full bg-purple-400 rounded-full" style={{ width: `${scores.leadership * 10}%` }} />

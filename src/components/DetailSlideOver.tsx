@@ -193,7 +193,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-black font-display text-white tracking-tight">{editedApp.companyName}</h2>
+                <h2 className="text-2xl font-black font-display text-slate-100 tracking-tight">{editedApp.companyName}</h2>
                 <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider px-3 py-0.5 rounded-full border ${getStatusBadgeStyle(editedApp.currentStatus)}`}>
                   ● {editedApp.currentStatus}
                 </Badge>
@@ -299,21 +299,21 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             <TabsList variant="line" className="gap-8 bg-transparent p-0">
               <TabsTrigger 
                 value="timeline" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
+                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
               >
                 <ListChecks className="w-4 h-4 mr-1.5 text-indigo-400" />
                 Pipeline Timeline & Signals
               </TabsTrigger>
               <TabsTrigger 
                 value="core" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
+                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
               >
                 <Info className="w-4 h-4 mr-1.5 text-blue-400" />
                 Employment & Assets
               </TabsTrigger>
               <TabsTrigger 
                 value="mortem" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-white border-b-2 border-transparent text-slate-500 hover:text-slate-300 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
+                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
               >
                 <Award className="w-4 h-4 mr-1.5 text-emerald-400" />
                 Telemetry Post-Mortem
@@ -551,7 +551,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                         value={editedApp.salaryRange}
                         onChange={(e) => handleFieldChange('salaryRange', e.target.value)}
                         placeholder="e.g., $190k - $240k"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-black text-white"
+                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-black text-slate-100"
                       />
                     </div>
 
@@ -607,7 +607,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                         value={editedApp.hrContact}
                         onChange={(e) => handleFieldChange('hrContact', e.target.value)}
                         placeholder="Name, Email, or phone"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-bold text-white"
+                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-bold text-slate-100"
                       />
                     </div>
 
@@ -701,13 +701,13 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
             {/* TAB 3: POST-MORTEM & TECHNICAL TELEMETRY */}
             <TabsContent value="mortem" className="outline-none space-y-6 mt-0">
-              <div className="bg-slate-950 border border-slate-900 text-white p-6 rounded-[2rem] space-y-6 shadow-xl relative overflow-hidden">
+              <div className="bg-slate-950 border border-slate-900 text-slate-100 p-6 rounded-[2rem] space-y-6 shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                   <Award className="w-40 h-40 text-indigo-500" />
                 </div>
 
                 <div className="border-b border-slate-900 pb-4">
-                  <h3 className="text-lg font-black flex items-center gap-2 text-white">
+                  <h3 className="text-lg font-black flex items-center gap-2 text-slate-100">
                     <Award className="w-5 h-5 text-indigo-400" />
                     Calibration Post-Mortem & Skill Gaps
                   </h3>
@@ -833,7 +833,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
           <Button
             variant="ghost"
             onClick={onClose}
-            className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 rounded-xl transition-all h-auto cursor-pointer"
+            className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-100 hover:bg-slate-850 rounded-xl transition-all h-auto cursor-pointer"
           >
             Close Mission Control
           </Button>

@@ -104,7 +104,7 @@ export function StatsGrid({ applications }: StatsGridProps) {
             <CardContent className="flex items-center justify-between w-full p-6">
               <div>
                 <p className="text-slate-500 text-[10px] uppercase tracking-wider font-extrabold">{stat.label}</p>
-                <h3 className="text-3xl font-black font-display text-white mt-1.5">{stat.value}</h3>
+                <h3 className="text-3xl font-black font-display text-slate-100 mt-1.5">{stat.value}</h3>
                 <p className={`text-[11px] font-bold font-mono mt-2 flex items-center gap-1 ${stat.subtextColorClass}`}>
                   {stat.subtext}
                 </p>

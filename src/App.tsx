@@ -25,7 +25,9 @@ import {
   LogIn,
   LogOut,
   X,
-  Trash2
+  Trash2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
@@ -34,6 +36,9 @@ import { ProfileModal } from './components/ProfileModal';
 import { Button } from '@/components/ui/button';
 
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('hiretrack_theme') as 'light' | 'dark') || 'light';
+  });
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isNewAppOpen, setIsNewAppOpen] = useState(false);
@@ -43,6 +48,17 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Synchronize document theme class
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('hiretrack_theme', theme);
+  }, [theme]);
   
   // Custom non-blocking states
   const [appToDelete, setAppToDelete] = useState<JobApplication | null>(null);
@@ -351,26 +367,48 @@ export default function App() {
     <div className="ambient-bg min-h-screen text-slate-100/90 font-sans flex flex-col lg:flex-row">
       
       {/* 1. SIDEBAR NAVIGATION */}
-      <aside className="w-full lg:w-64 bg-slate-900 text-white lg:fixed lg:h-full flex flex-col z-40 border-r border-slate-800 shadow-xl" id="sidebar">
+      <aside className="w-full lg:w-64 bg-slate-900 text-slate-200 lg:fixed lg:h-full flex flex-col z-40 border-r border-slate-800 shadow-xl" id="sidebar">
         {/* Logo/Branding Block */}
         <div className="p-6 border-b border-slate-800 flex justify-between items-center lg:block">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center font-black tracking-tighter text-white font-display shadow-lg shadow-indigo-500/20">
-              HT
+          <div className="flex items-center justify-between w-full lg:mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center font-black tracking-tighter text-white font-display shadow-lg shadow-indigo-500/20">
+                HT
+              </div>
+              <div>
+                <span className="text-lg font-black tracking-tight font-display block leading-none text-slate-100">HireTrack<span className="text-indigo-400">.pro</span></span>
+                <span className="text-[9px] text-indigo-300 font-mono tracking-widest uppercase mt-1 block">Developer Suite</span>
+              </div>
             </div>
-            <div>
-              <span className="text-lg font-black tracking-tight font-display block leading-none">HireTrack<span className="text-indigo-400">.pro</span></span>
-              <span className="text-[9px] text-indigo-300 font-mono tracking-widest uppercase mt-1 block">Developer Suite</span>
-            </div>
+
+            {/* Desktop Theme Switcher Button */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 hover:bg-slate-800/60 text-slate-400 hover:text-indigo-400 rounded-xl border border-slate-800/80 transition-all cursor-pointer hidden lg:flex"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            </button>
           </div>
 
-          <button 
-            onClick={() => setIsNewAppOpen(true)}
-            className="lg:hidden p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white"
-            title="New Application"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            {/* Mobile Theme Switcher */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 hover:bg-slate-800/60 text-slate-400 hover:text-indigo-400 rounded-xl border border-slate-800/80 transition-all cursor-pointer"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+            </button>
+
+            <button 
+              onClick={() => setIsNewAppOpen(true)}
+              className="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white"
+              title="New Application"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Sidebar Nav Items */}
@@ -380,7 +418,7 @@ export default function App() {
             className={`flex items-center gap-3 w-full p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all ${
               activeSidebarTab === 'dashboard' 
                 ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30' 
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
             }`}
           >
             <Layers className="w-4.5 h-4.5" />
@@ -392,7 +430,7 @@ export default function App() {
             className={`flex items-center gap-3 w-full p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all ${
               activeSidebarTab === 'matrix' 
                 ? 'bg-indigo-600 text-white shadow shadow-indigo-600/30' 
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
             }`}
           >
             <BrainCircuit className="w-4.5 h-4.5" />
@@ -404,7 +442,7 @@ export default function App() {
           {user && (
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="lg:hidden flex items-center gap-3 p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight text-slate-400 hover:bg-slate-800/50 hover:text-white transition-all shrink-0"
+              className="lg:hidden flex items-center gap-3 p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight text-slate-400 hover:bg-slate-800/50 hover:text-slate-100 transition-all shrink-0"
               title="My Profile"
             >
               <User className="w-4.5 h-4.5 text-indigo-400" />
@@ -502,7 +540,7 @@ export default function App() {
             {/* Upper Header Row */}
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-6">
               <div>
-                <h1 className="text-3xl font-black font-display text-white tracking-tight flex items-center gap-2">
+                <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight flex items-center gap-2">
                   Application Pipeline
                 </h1>
                 <p className="text-slate-400 text-sm font-medium mt-1">
@@ -552,7 +590,7 @@ export default function App() {
         {activeSidebarTab === 'matrix' && (
           <div className="space-y-8" id="tab-matrix-view">
             <header className="border-b border-slate-800 pb-6">
-              <h1 className="text-3xl font-black font-display text-white tracking-tight">Technical Skill Matrix</h1>
+              <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight">Technical Skill Matrix</h1>
               <p className="text-slate-400 text-sm font-medium mt-1">
                 Refine key engineering topics extracted from target Job Spec (JD) requirements.
               </p>
@@ -564,7 +602,7 @@ export default function App() {
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-indigo-400" />
-                    <h3 className="font-extrabold text-white text-base">HPC & CUDA Optimizations</h3>
+                    <h3 className="font-extrabold text-slate-100 text-base">HPC & CUDA Optimizations</h3>
                   </div>
                   <span className="text-[10px] font-bold bg-indigo-950/40 text-indigo-400 px-2 py-0.5 rounded border border-indigo-900/40">GPU Core</span>
                 </div>
@@ -594,7 +632,7 @@ export default function App() {
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
                   <div className="flex items-center gap-2">
                     <BrainCircuit className="w-5 h-5 text-indigo-400" />
-                    <h3 className="font-extrabold text-white text-base">Distributed Backend Ledgers</h3>
+                    <h3 className="font-extrabold text-slate-100 text-base">Distributed Backend Ledgers</h3>
                   </div>
                   <span className="text-[10px] font-bold bg-blue-950/40 text-blue-400 px-2 py-0.5 rounded border border-blue-900/40">Systems</span>
                 </div>
@@ -675,14 +713,14 @@ export default function App() {
                   <Trash2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-white text-lg tracking-tight">Delete Tracking Record?</h3>
+                  <h3 className="font-extrabold text-slate-100 text-lg tracking-tight">Delete Tracking Record?</h3>
                   <p className="text-xs text-rose-400 font-medium">This operation cannot be reversed.</p>
                 </div>
               </div>
 
               <div className="space-y-3.5 mb-6">
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Are you sure you want to permanently remove <strong className="text-white font-extrabold">{appToDelete.companyName}</strong> ({appToDelete.targetRole}) from your recruitment pipeline?
+                  Are you sure you want to permanently remove <strong className="text-slate-100 font-extrabold">{appToDelete.companyName}</strong> ({appToDelete.targetRole}) from your recruitment pipeline?
                 </p>
                 {isSupabaseConfigured && user && (
                   <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 flex items-center gap-2 text-[11px] text-slate-400">

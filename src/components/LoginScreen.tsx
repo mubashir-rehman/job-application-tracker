@@ -135,15 +135,15 @@ export function LoginScreen({ onGuestLogin, onAuthSuccess }: LoginScreenProps) {
               HT
             </div>
             <div>
-              <span className="text-2xl font-black tracking-tight font-display block leading-none">HireTrack<span className="text-indigo-400">.pro</span></span>
-              <span className="text-[10px] text-indigo-300 font-mono tracking-widest uppercase mt-1.5 block">Developer Interview Suite</span>
+              <span className="text-2xl font-black tracking-tight font-display block leading-none text-slate-100">HireTrack<span className="text-indigo-600 dark:text-indigo-400">.pro</span></span>
+              <span className="text-[10px] text-indigo-600/75 dark:text-indigo-300 font-mono tracking-widest uppercase mt-1.5 block">Developer Interview Suite</span>
             </div>
           </div>
 
           {/* Heading */}
           <div className="space-y-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white tracking-tight leading-[1.1]">
-              Track your developer pipeline, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-200">own your interviews.</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-display text-slate-100 tracking-tight leading-[1.1]">
+              Track your developer pipeline, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-indigo-400 dark:to-indigo-200">own your interviews.</span>
             </h1>
             <p className="text-slate-400 text-sm sm:text-base font-medium leading-relaxed max-w-lg">
               Manage your technical opportunities with a beautiful 7-phase timeline, system design trackers, and GPU/HPC skill matrices in one unified dashboard.
@@ -153,33 +153,33 @@ export function LoginScreen({ onGuestLogin, onAuthSuccess }: LoginScreenProps) {
           {/* Key Value Proposition points */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
             <div className="glass-panel p-4.5 rounded-2xl border border-slate-800/80 flex items-start gap-3 bg-slate-950/20">
-              <Layers className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-white text-xs uppercase tracking-wide">7-Phase Pipeline</h3>
+                <h3 className="font-bold text-slate-100 text-xs uppercase tracking-wide">7-Phase Pipeline</h3>
                 <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Structured stage timeline with logs, salary range, and post-mortems.</p>
               </div>
             </div>
 
             <div className="glass-panel p-4.5 rounded-2xl border border-slate-800/80 flex items-start gap-3 bg-slate-950/20">
-              <BrainCircuit className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-white text-xs uppercase tracking-wide">Technical Skill Matrix</h3>
+                <h3 className="font-bold text-slate-100 text-xs uppercase tracking-wide">Technical Skill Matrix</h3>
                 <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Assess distributed systems, GPU kernels, and database replication requirements.</p>
               </div>
             </div>
 
             <div className="glass-panel p-4.5 rounded-2xl border border-slate-800/80 flex items-start gap-3 bg-slate-950/20">
-              <Database className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <Database className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-white text-xs uppercase tracking-wide">Supabase Integration</h3>
+                <h3 className="font-bold text-slate-100 text-xs uppercase tracking-wide">Supabase Integration</h3>
                 <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Save opportunities securely to your private PostgreSQL backend.</p>
               </div>
             </div>
 
             <div className="glass-panel p-4.5 rounded-2xl border border-slate-800/80 flex items-start gap-3 bg-slate-950/20">
-              <Terminal className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <Terminal className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-white text-xs uppercase tracking-wide">Offline Backup Support</h3>
+                <h3 className="font-bold text-slate-100 text-xs uppercase tracking-wide">Offline Backup Support</h3>
                 <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Start immediately without an account. Save and export tracking JSON dynamically.</p>
               </div>
             </div>
@@ -192,7 +192,7 @@ export function LoginScreen({ onGuestLogin, onAuthSuccess }: LoginScreenProps) {
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-indigo-500/5 filter blur-2xl pointer-events-none" />
 
             <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+              <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Developer Gate</span>
               </div>
@@ -214,7 +214,7 @@ export function LoginScreen({ onGuestLogin, onAuthSuccess }: LoginScreenProps) {
                   type="button"
                   onClick={handleGoogleAuth}
                   disabled={authLoading}
-                  className="w-full py-3 px-4 bg-white hover:bg-slate-100 text-slate-950 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md hover:shadow-lg disabled:opacity-50"
+                  className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-200 rounded-xl font-bold text-xs flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md hover:shadow-lg disabled:opacity-50"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
