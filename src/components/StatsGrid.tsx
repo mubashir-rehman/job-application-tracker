@@ -1,5 +1,6 @@
 import { JobApplication } from '../types';
 import { Briefcase, Calendar, Award, Banknote } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface StatsGridProps {
   applications: JobApplication[];
@@ -79,19 +80,21 @@ export function StatsGrid({ applications }: StatsGridProps) {
       {stats.map((stat, i) => {
         const Icon = stat.icon;
         return (
-          <div
+          <Card
             key={i}
             id={`stat-card-${i}`}
-            className={`glass-panel p-6 rounded-2xl shadow-sm border border-slate-800/40 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:translate-y-[-2px] ${stat.glowClass}`}
+            className={`glass-panel rounded-2xl shadow-sm border border-slate-800/40 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:translate-y-[-2px] ${stat.glowClass}`}
           >
-            <div>
-              <p className="text-slate-500 text-xs uppercase tracking-wider font-bold">{stat.label}</p>
-              <h3 className="text-3xl font-extrabold font-display text-white mt-2">{stat.value}</h3>
-            </div>
-            <div className={`p-3.5 rounded-xl border ${stat.colorClass} flex items-center justify-center`}>
-              <Icon className="w-5 h-5" />
-            </div>
-          </div>
+            <CardContent className="flex items-center justify-between w-full p-6">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider font-bold">{stat.label}</p>
+                <h3 className="text-3xl font-extrabold font-display text-white mt-2">{stat.value}</h3>
+              </div>
+              <div className={`p-3.5 rounded-xl border ${stat.colorClass} flex items-center justify-center`}>
+                <Icon className="w-5 h-5" />
+              </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { JobApplication } from './types';
 import { INITIAL_APPLICATIONS } from './data';
 import { StatsGrid } from './components/StatsGrid';
@@ -21,12 +22,15 @@ import {
   RefreshCw,
   AlertTriangle,
   LogIn,
-  LogOut
+  LogOut,
+  X,
+  Trash2
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
+import { Button } from '@/components/ui/button';
 
 export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -38,6 +42,18 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+  // Custom non-blocking states
+  const [appToDelete, setAppToDelete] = useState<JobApplication | null>(null);
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'warning' | 'info' }[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
 
   // Isolate localStorage cache by user ID to prevent data leakage between sessions/guests
   const getStorageKey = () => {
@@ -222,6 +238,7 @@ export default function App() {
     // 1. Optimistic update
     const updated = [newApp, ...applications];
     saveLocalOnly(updated);
+    showToast(`Successfully added ${newApp.companyName} to your pipeline.`, 'success');
 
     // 2. Cloud sync if active
     if (isSupabaseConfigured) {
@@ -229,7 +246,7 @@ export default function App() {
         await supabaseService.addApplication(newApp, user?.id);
       } catch (err) {
         console.error("Cloud save failed", err);
-        alert("Failed to save to cloud database, but saved locally in offline sandbox mode.");
+        showToast("Failed to save to cloud database. Saved locally in offline sandbox mode.", "warning");
       }
     }
   };
@@ -239,6 +256,7 @@ export default function App() {
     // 1. Optimistic update
     const updated = applications.map(app => app.id === updatedApp.id ? updatedApp : app);
     saveLocalOnly(updated);
+    showToast(`Successfully updated details for ${updatedApp.companyName}.`, 'success');
 
     // 2. Cloud sync if active
     if (isSupabaseConfigured) {
@@ -246,30 +264,43 @@ export default function App() {
         await supabaseService.updateApplication(updatedApp, user?.id);
       } catch (err) {
         console.error("Cloud update failed", err);
-        alert("Failed to update on cloud database, but updated locally in offline sandbox mode.");
+        showToast("Failed to update on cloud database. Updated locally in offline sandbox mode.", "warning");
       }
     }
   };
 
-  // Delete Application
-  const handleDeleteApplication = async (id: string, e: React.MouseEvent) => {
+  // Trigger delete confirmation modal (non-blocking)
+  const handleDeleteApplication = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this job application track?')) {
-      // 1. Optimistic update
-      const updated = applications.filter(app => app.id !== id);
-      saveLocalOnly(updated);
-      if (selectedApplication?.id === id) {
-        setSelectedApplication(null);
-      }
+    const app = applications.find(a => a.id === id);
+    if (app) {
+      setAppToDelete(app);
+    }
+  };
 
-      // 2. Cloud sync if active
-      if (isSupabaseConfigured) {
-        try {
-          await supabaseService.deleteApplication(id, user?.id);
-        } catch (err) {
-          console.error("Cloud delete failed", err);
-          alert("Failed to delete from cloud database, but deleted locally in offline sandbox mode.");
-        }
+  // Execute actual deletion
+  const executeDeleteApplication = async () => {
+    if (!appToDelete) return;
+    const id = appToDelete.id;
+    const company = appToDelete.companyName;
+
+    // 1. Optimistic update
+    const updated = applications.filter(app => app.id !== id);
+    saveLocalOnly(updated);
+    if (selectedApplication?.id === id) {
+      setSelectedApplication(null);
+    }
+    
+    setAppToDelete(null); // Close modal instantly for seamless UI response
+    showToast(`Successfully deleted ${company} from your pipeline.`, 'success');
+
+    // 2. Cloud sync if active
+    if (isSupabaseConfigured) {
+      try {
+        await supabaseService.deleteApplication(id, user?.id);
+      } catch (err) {
+        console.error("Cloud delete failed", err);
+        showToast("Failed to delete from cloud database, but deleted locally in offline sandbox.", "warning");
       }
     }
   };
@@ -480,23 +511,24 @@ export default function App() {
 
               {/* Action Suite */}
               <div className="flex items-center gap-3.5 w-full sm:w-auto">
-                <button
+                <Button
                   onClick={handleExportData}
-                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl font-bold text-xs border border-slate-800 shadow-sm flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer"
+                  variant="outline"
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl font-bold text-xs border border-slate-800 shadow-sm flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer h-auto"
                   title="Export tracking JSON for Phase 2 Supabase Import"
                 >
                   <Download className="w-4 h-4 text-slate-500" />
                   <span>Export JSON</span>
-                </button>
+                </Button>
 
-                <button
+                <Button
                   onClick={() => setIsNewAppOpen(true)}
                   id="add-application-main-btn"
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs shadow-lg shadow-indigo-500/10 hover:shadow flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs shadow-lg shadow-indigo-500/10 hover:shadow flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer h-auto"
                 >
                   <Plus className="w-4.5 h-4.5" />
                   <span>New Application</span>
-                </button>
+                </Button>
               </div>
             </header>
 
@@ -611,6 +643,105 @@ export default function App() {
         onClose={() => setIsProfileOpen(false)}
         user={user}
       />
+
+      {/* 6. NON-BLOCKING CUSTOM DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {appToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAppToDelete(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              className="relative w-full max-w-md glass-panel p-6 rounded-2xl border border-rose-950 bg-slate-900 shadow-xl overflow-hidden"
+              id="delete-confirm-modal"
+            >
+              <div className="flex items-center gap-3 text-rose-400 mb-4">
+                <div className="p-2.5 bg-rose-950/50 rounded-xl border border-rose-900/30">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-lg tracking-tight">Delete Tracking Record?</h3>
+                  <p className="text-xs text-rose-400 font-medium">This operation cannot be reversed.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 mb-6">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Are you sure you want to permanently remove <strong className="text-white font-extrabold">{appToDelete.companyName}</strong> ({appToDelete.targetRole}) from your recruitment pipeline?
+                </p>
+                {isSupabaseConfigured && user && (
+                  <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 flex items-center gap-2 text-[11px] text-slate-400">
+                    <Database className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>This will delete the record from both local cache and active Supabase Cloud.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAppToDelete(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700/80 text-slate-300 rounded-xl font-bold text-xs transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDeleteApplication}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold text-xs transition shadow-lg shadow-rose-900/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Record</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. TOAST NOTIFICATIONS */}
+      <div className="fixed bottom-6 right-6 z-[110] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+              className={`p-4 rounded-xl shadow-lg border flex items-start gap-3 pointer-events-auto backdrop-blur-md ${
+                toast.type === 'success'
+                  ? 'bg-slate-950/95 border-emerald-950/80 text-slate-100 shadow-emerald-950/10'
+                  : toast.type === 'error'
+                  ? 'bg-slate-950/95 border-rose-950/80 text-slate-100 shadow-rose-950/10'
+                  : toast.type === 'warning'
+                  ? 'bg-slate-950/95 border-amber-950/80 text-slate-100 shadow-amber-950/10'
+                  : 'bg-slate-950/95 border-indigo-950/80 text-slate-100 shadow-indigo-950/10'
+              }`}
+            >
+              <div className="flex-1 text-xs font-semibold leading-relaxed">
+                {toast.message}
+              </div>
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="text-slate-400 hover:text-white transition p-0.5 rounded-md hover:bg-slate-800"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
     </div>
   );
