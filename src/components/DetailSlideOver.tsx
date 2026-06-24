@@ -20,7 +20,10 @@ import {
   BookOpen, 
   ArrowRight,
   TrendingUp,
-  Play
+  Play,
+  ChevronDown,
+  ChevronUp,
+  FileText
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -38,6 +41,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
   const [activeTab, setActiveTab] = useState<'timeline' | 'core' | 'mortem'>('timeline');
   const [editedApp, setEditedApp] = useState<JobApplication | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({});
 
   // Sync state with selected application
   useEffect(() => {
@@ -49,7 +53,35 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     }
   }, [application]);
 
+  // Initialize expanded phases (active phase is expanded initially, or first if none is active)
+  useEffect(() => {
+    if (editedApp) {
+      const initial: Record<number, boolean> = {};
+      let hasActive = false;
+      editedApp.phases.forEach((p, idx) => {
+        if (p.status === 'active') {
+          initial[idx] = true;
+          hasActive = true;
+        } else {
+          initial[idx] = false;
+        }
+      });
+      // If no phase is active, expand the first one
+      if (!hasActive && editedApp.phases.length > 0) {
+        initial[0] = true;
+      }
+      setExpandedPhases(initial);
+    }
+  }, [editedApp?.id]);
+
   if (!editedApp) return null;
+
+  const togglePhaseExpanded = (index: number) => {
+    setExpandedPhases(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
 
   const handleFieldChange = (field: keyof JobApplication, value: any) => {
     if (!editedApp) return;
@@ -68,6 +100,10 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       if (value === 'completed' || value === 'active') {
         computedStatus = updatedPhases[index].name.replace(/^Phase \d+:\s*/, '');
       }
+      setExpandedPhases(prev => ({
+        ...prev,
+        [index]: true
+      }));
     }
 
     const updated = { 
@@ -214,46 +250,48 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
         </div>
 
         {/* Horizontal Progress Tracker (LinearIssueStyle) */}
-        <div className="bg-slate-950/40 border-b border-slate-900/80 px-8 py-3.5 shrink-0 overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[700px] gap-2">
-            {editedApp.phases.map((ph, idx) => {
-              const isComp = ph.status === 'completed';
-              const isAct = ph.status === 'active';
-              return (
-                <div key={idx} className="flex-1 flex items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    {/* Circle badge */}
-                    <div 
-                      onClick={() => handlePhaseChange(idx, 'status', isComp ? 'active' : isAct ? 'upcoming' : 'completed')}
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] cursor-pointer transition-all border shrink-0 ${
-                        isComp 
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                          : isAct 
-                            ? 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-500/30 animate-pulse' 
-                            : 'bg-slate-900 text-slate-500 border-slate-800'
-                      }`}
-                      title="Click to toggle stage status"
-                    >
-                      {isComp ? '✓' : idx + 1}
+        {activeTab === 'timeline' && (
+          <div className="bg-slate-950/40 border-b border-slate-900/80 px-8 py-3.5 shrink-0 overflow-x-auto">
+            <div className="flex items-center justify-between min-w-[700px] gap-2">
+              {editedApp.phases.map((ph, idx) => {
+                const isComp = ph.status === 'completed';
+                const isAct = ph.status === 'active';
+                return (
+                  <div key={idx} className="flex-1 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      {/* Circle badge */}
+                      <div 
+                        onClick={() => handlePhaseChange(idx, 'status', isComp ? 'active' : isAct ? 'upcoming' : 'completed')}
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[10px] cursor-pointer transition-all border shrink-0 ${
+                          isComp 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                            : isAct 
+                              ? 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-500/30 animate-pulse' 
+                              : 'bg-slate-900 text-slate-500 border-slate-800'
+                        }`}
+                        title="Click to toggle stage status"
+                      >
+                        {isComp ? '✓' : idx + 1}
+                      </div>
+                      {/* Text */}
+                      <div className="min-w-0">
+                        <p className={`text-[10px] font-extrabold uppercase font-mono tracking-wide ${isAct ? 'text-indigo-400' : isComp ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {ph.name.replace(/^Phase \d+:\s*/, '').split(' ')[0]}
+                        </p>
+                        <p className="text-[8px] text-slate-500 font-bold truncate max-w-[80px]" title={ph.name.replace(/^Phase \d+:\s*/, '')}>
+                          {ph.name.replace(/^Phase \d+:\s*/, '')}
+                        </p>
+                      </div>
                     </div>
-                    {/* Text */}
-                    <div className="min-w-0">
-                      <p className={`text-[10px] font-extrabold uppercase font-mono tracking-wide ${isAct ? 'text-indigo-400' : isComp ? 'text-slate-300' : 'text-slate-600'}`}>
-                        {ph.name.replace(/^Phase \d+:\s*/, '').split(' ')[0]}
-                      </p>
-                      <p className="text-[8px] text-slate-500 font-bold truncate max-w-[80px]" title={ph.name.replace(/^Phase \d+:\s*/, '')}>
-                        {ph.name.replace(/^Phase \d+:\s*/, '')}
-                      </p>
-                    </div>
+                    {idx < 6 && (
+                      <div className={`h-[1px] flex-1 min-w-[12px] ${isComp ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />
+                    )}
                   </div>
-                  {idx < 6 && (
-                    <div className={`h-[1px] flex-1 min-w-[12px] ${isComp ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tab Selection Layout */}
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
@@ -294,11 +332,12 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
               {editedApp.phases.map((phase, i) => {
                 const isActive = phase.status === 'active';
                 const isCompleted = phase.status === 'completed';
+                const isExpanded = !!expandedPhases[i];
                 return (
                   <div key={i} className="relative pl-12 group" id={`phase-row-${i}`}>
                     
                     {/* Circle icon on the left vertical thread line */}
-                    <div className="absolute left-3 top-1 z-10">
+                    <div className="absolute left-3 top-1.5 z-10">
                       <div 
                         onClick={() => {
                           const nextStatus = isCompleted ? 'active' : isActive ? 'skipped' : 'completed';
@@ -323,119 +362,169 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                         ? 'border-indigo-500/30 bg-slate-900/60 shadow-[0_0_40px_rgba(99,102,241,0.06)]' 
                         : isCompleted
                           ? 'border-emerald-500/10 bg-slate-900/10'
-                          : 'border-slate-900 bg-slate-900/10 opacity-60 hover:opacity-100'
+                          : 'border-slate-900 bg-slate-900/10 opacity-70 hover:opacity-100'
                     }`}>
                       
-                      {/* Card Header: Stage Title & Segmented Button State Switcher */}
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-900 pb-4 mb-5">
-                        <div>
-                          <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-widest font-mono block">Phase {i+1} Calibration</span>
-                          <h4 className={`text-base font-black tracking-tight ${isActive ? 'text-indigo-400' : 'text-slate-100'}`}>
-                            {phase.name}
-                          </h4>
+                      {/* Card Header: Stage Title & Segmented Button State Switcher / Accordion Trigger */}
+                      <div 
+                        onClick={() => togglePhaseExpanded(i)}
+                        className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer select-none ${isExpanded ? 'border-b border-slate-900 pb-4 mb-5' : ''}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div>
+                            <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-widest font-mono block">Phase {i+1} Calibration</span>
+                            <h4 className={`text-base font-black tracking-tight ${isActive ? 'text-indigo-400' : 'text-slate-100'} flex items-center gap-2 flex-wrap`}>
+                              <span>{phase.name}</span>
+                              {!isExpanded && (
+                                <span className={`text-[9px] uppercase px-2 py-0.5 rounded-md font-mono font-bold tracking-widest ${
+                                  isCompleted 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25' 
+                                    : isActive 
+                                      ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/25 animate-pulse' 
+                                      : phase.status === 'skipped'
+                                        ? 'bg-slate-800/60 text-slate-400 border border-slate-700/20'
+                                        : 'bg-slate-900/80 text-slate-500 border border-slate-800/80'
+                                }`}>
+                                  {phase.status}
+                                </span>
+                              )}
+                            </h4>
+                          </div>
+                          
+                          {/* Collapsed indicators of content presence */}
+                          {!isExpanded && (
+                            <div className="flex gap-1.5 ml-2 shrink-0">
+                              {phase.pros && <ThumbsUp className="w-3.5 h-3.5 text-emerald-500" title="Has positive signals" />}
+                              {phase.cons && <ThumbsDown className="w-3.5 h-3.5 text-rose-500" title="Has risk flags" />}
+                              {(phase.remarks || phase.feedback) && <FileText className="w-3.5 h-3.5 text-indigo-400" title="Has notes or feedback quotes" />}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Date Picker + Satisfying Segmented State Switcher */}
-                        <div className="flex flex-wrap items-center gap-3">
-                          {/* Mini Date Block */}
-                          <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-900">
-                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                            <input
-                              type="date"
-                              value={phase.date}
-                              onChange={(e) => handlePhaseChange(i, 'date', e.target.value)}
-                              className="text-xs bg-transparent border-none p-0 outline-none font-bold text-slate-300 focus:ring-0 w-28"
-                            />
-                          </div>
+                        {/* Date Picker + Satisfying Segmented State Switcher (when expanded) OR Simple Date pill (when collapsed) */}
+                        <div className="flex flex-wrap items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {isExpanded ? (
+                            <>
+                              {/* Mini Date Block */}
+                              <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-900">
+                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                <input
+                                  type="date"
+                                  value={phase.date}
+                                  onChange={(e) => handlePhaseChange(i, 'date', e.target.value)}
+                                  className="text-xs bg-transparent border-none p-0 outline-none font-bold text-slate-300 focus:ring-0 w-28"
+                                />
+                              </div>
 
-                          {/* Segmented Button Selection controls (Satisfying!) */}
-                          <div className="bg-slate-950 p-1 rounded-xl border border-slate-900 flex gap-0.5">
-                            {(['upcoming', 'active', 'completed', 'skipped'] as const).map((st) => (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => handlePhaseChange(i, 'status', st)}
-                                className={`px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                                  phase.status === st 
-                                    ? st === 'completed'
-                                      ? 'bg-emerald-500/15 text-emerald-400 font-black'
-                                      : st === 'active'
-                                        ? 'bg-indigo-600 text-white'
-                                        : st === 'skipped'
-                                          ? 'bg-slate-800 text-slate-300'
-                                          : 'bg-slate-800/80 text-slate-400'
-                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/50'
-                                }`}
-                              >
-                                {st}
-                              </button>
-                            ))}
-                          </div>
+                              {/* Segmented Button Selection controls (Satisfying!) */}
+                              <div className="bg-slate-950 p-1 rounded-xl border border-slate-900 flex gap-0.5">
+                                {(['upcoming', 'active', 'completed', 'skipped'] as const).map((st) => (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => handlePhaseChange(i, 'status', st)}
+                                    className={`px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                                      phase.status === st 
+                                        ? st === 'completed'
+                                          ? 'bg-emerald-500/15 text-emerald-400 font-black'
+                                          : st === 'active'
+                                            ? 'bg-indigo-600 text-white'
+                                            : st === 'skipped'
+                                              ? 'bg-slate-800 text-slate-300'
+                                              : 'bg-slate-800/80 text-slate-400'
+                                        : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/50'
+                                    }`}
+                                  >
+                                    {st}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-900">
+                              {phase.date ? new Date(phase.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
+                            </span>
+                          )}
+
+                          {/* Expand/Collapse Chevron Button */}
+                          <button
+                            type="button"
+                            onClick={() => togglePhaseExpanded(i)}
+                            className="p-1.5 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-900/80 transition cursor-pointer"
+                            title={isExpanded ? 'Collapse details' : 'Expand details'}
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Signals & Textarea Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                        
-                        {/* Positive Signals - Left Green Border */}
-                        <div className="bg-emerald-500/[0.02] border border-emerald-500/10 border-l-4 border-l-emerald-500 rounded-2xl p-4.5 space-y-2">
-                          <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                            Positive Signals & Pros
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={phase.pros}
-                            onChange={(e) => handlePhaseChange(i, 'pros', e.target.value)}
-                            placeholder="✓ E.g., referral was accepted instantly, interviewer was highly engaged with our C++ kernel reduction designs..."
-                            className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
-                          />
-                        </div>
+                      {/* Expanded Panel */}
+                      {isExpanded && (
+                        <div className="space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          {/* Signals & Textarea Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                            
+                            {/* Positive Signals - Left Green Border */}
+                            <div className="bg-emerald-500/[0.02] border border-emerald-500/10 border-l-4 border-l-emerald-500 rounded-2xl p-4.5 space-y-2">
+                              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                                Positive Signals & Pros
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={phase.pros}
+                                onChange={(e) => handlePhaseChange(i, 'pros', e.target.value)}
+                                placeholder="✓ E.g., referral was accepted instantly, interviewer was highly engaged with our C++ kernel reduction designs..."
+                                className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
+                              />
+                            </div>
 
-                        {/* Red Flags / Risk Areas - Left Red Border */}
-                        <div className="bg-rose-500/[0.02] border border-rose-500/10 border-l-4 border-l-rose-500 rounded-2xl p-4.5 space-y-2">
-                          <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                            Risk Areas / Red Flags
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={phase.cons}
-                            onChange={(e) => handlePhaseChange(i, 'cons', e.target.value)}
-                            placeholder="⚠ E.g., timezone mismatch, salary ceiling concerns, whiteboard requirements detected..."
-                            className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
-                          />
-                        </div>
-                      </div>
+                            {/* Red Flags / Risk Areas - Left Red Border */}
+                            <div className="bg-rose-500/[0.02] border border-rose-500/10 border-l-4 border-l-rose-500 rounded-2xl p-4.5 space-y-2">
+                              <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                                Risk Areas / Red Flags
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={phase.cons}
+                                onChange={(e) => handlePhaseChange(i, 'cons', e.target.value)}
+                                placeholder="⚠ E.g., timezone mismatch, salary ceiling concerns, whiteboard requirements detected..."
+                                className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
+                              />
+                            </div>
+                          </div>
 
-                      {/* Remarks & Quotes feedback section */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Remarks, Stack & Notes</label>
-                          <textarea
-                            rows={3}
-                            value={phase.remarks}
-                            onChange={(e) => handlePhaseChange(i, 'remarks', e.target.value)}
-                            placeholder="Instructions, interviewer name, and specific challenges or homework parameters..."
-                            className="text-xs bg-slate-950 border border-slate-900 p-3 rounded-2xl w-full text-slate-200 transition placeholder-slate-700 outline-none focus:border-indigo-500 leading-relaxed"
-                          />
-                        </div>
+                          {/* Remarks & Quotes feedback section */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Remarks, Stack & Notes</label>
+                              <textarea
+                                rows={3}
+                                value={phase.remarks}
+                                onChange={(e) => handlePhaseChange(i, 'remarks', e.target.value)}
+                                placeholder="Instructions, interviewer name, and specific challenges or homework parameters..."
+                                className="text-xs bg-slate-950 border border-slate-900 p-3 rounded-2xl w-full text-slate-200 transition placeholder-slate-700 outline-none focus:border-indigo-500 leading-relaxed"
+                              />
+                            </div>
 
-                        {/* Direct Quotes block (interviewer feedback) */}
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">Direct Interviewer Quotes</label>
-                          <div className="relative bg-slate-950/60 p-3 rounded-2xl border border-indigo-900/20">
-                            <div className="absolute top-2.5 right-3 text-indigo-500/10 font-serif text-4xl select-none leading-none">“</div>
-                            <textarea
-                              rows={3}
-                              value={phase.feedback}
-                              onChange={(e) => handlePhaseChange(i, 'feedback', e.target.value)}
-                              placeholder="Paste direct quotes from emails, phone calls, or recruiter summaries..."
-                              className="text-xs bg-transparent border-none p-0 w-full text-slate-100 outline-none focus:ring-0 placeholder-indigo-950 leading-relaxed italic pr-6"
-                            />
+                            {/* Direct Quotes block (interviewer feedback) */}
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">Direct Interviewer Quotes</label>
+                              <div className="relative bg-slate-950/60 p-3 rounded-2xl border border-indigo-900/20">
+                                <div className="absolute top-2.5 right-3 text-indigo-500/10 font-serif text-4xl select-none leading-none">“</div>
+                                <textarea
+                                  rows={3}
+                                  value={phase.feedback}
+                                  onChange={(e) => handlePhaseChange(i, 'feedback', e.target.value)}
+                                  placeholder="Paste direct quotes from emails, phone calls, or recruiter summaries..."
+                                  className="text-xs bg-transparent border-none p-0 w-full text-slate-100 outline-none focus:ring-0 placeholder-indigo-950 leading-relaxed italic pr-6"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                     </div>
                   </div>
