@@ -22,7 +22,7 @@ import {
   RefreshCw,
   AlertTriangle
 } from 'lucide-react';
-import { isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
 import { SupabaseBridge } from './components/SupabaseBridge';
 
@@ -33,8 +33,73 @@ export default function App() {
   const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'matrix' | 'about' | 'supabase'>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
-  // Load applications on mount
+  // Listen for session and popup messages
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      // Get initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+      });
+
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('vercel.app')) {
+        return;
+      }
+      if (event.data?.type === 'SUPABASE_AUTH_SUCCESS') {
+        if (isSupabaseConfigured && supabase) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+          });
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Check if popup callback
+  useEffect(() => {
+    const hasHash = window.location.hash && (
+      window.location.hash.includes('access_token=') || 
+      window.location.hash.includes('error=')
+    );
+    
+    if (window.opener && (hasHash || window.location.search.includes('code='))) {
+      const checkSession = async () => {
+        if (supabase) {
+          for (let i = 0; i < 5; i++) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) break;
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+        
+        try {
+          window.opener.postMessage({ type: 'SUPABASE_AUTH_SUCCESS' }, '*');
+        } catch (err) {
+          console.error("Failed to post message to opener", err);
+        }
+        window.close();
+      };
+      checkSession();
+    }
+  }, []);
+
+  // Load applications on user change
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -43,7 +108,7 @@ export default function App() {
       // Check if Supabase is active
       if (isSupabaseConfigured) {
         try {
-          const cloudData = await supabaseService.fetchApplications();
+          const cloudData = await supabaseService.fetchApplications(user?.id);
           if (cloudData && cloudData.length > 0) {
             setApplications(cloudData);
             // Also update local cache for quick loading next time
@@ -99,7 +164,7 @@ export default function App() {
     };
 
     loadData();
-  }, []);
+  }, [user]);
 
   // Save locally (Optimistic UI fallback cache)
   const saveLocalOnly = (updatedList: JobApplication[]) => {
@@ -124,7 +189,7 @@ export default function App() {
     // 2. Cloud sync if active
     if (isSupabaseConfigured) {
       try {
-        await supabaseService.addApplication(newApp);
+        await supabaseService.addApplication(newApp, user?.id);
       } catch (err) {
         console.error("Cloud save failed", err);
         alert("Failed to save to cloud database, but saved locally in offline sandbox mode.");
@@ -141,7 +206,7 @@ export default function App() {
     // 2. Cloud sync if active
     if (isSupabaseConfigured) {
       try {
-        await supabaseService.updateApplication(updatedApp);
+        await supabaseService.updateApplication(updatedApp, user?.id);
       } catch (err) {
         console.error("Cloud update failed", err);
         alert("Failed to update on cloud database, but updated locally in offline sandbox mode.");
@@ -163,7 +228,7 @@ export default function App() {
       // 2. Cloud sync if active
       if (isSupabaseConfigured) {
         try {
-          await supabaseService.deleteApplication(id);
+          await supabaseService.deleteApplication(id, user?.id);
         } catch (err) {
           console.error("Cloud delete failed", err);
           alert("Failed to delete from cloud database, but deleted locally in offline sandbox mode.");
@@ -176,7 +241,7 @@ export default function App() {
   const handleRefreshFromCloud = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const cloudData = await supabaseService.fetchApplications();
+      const cloudData = await supabaseService.fetchApplications(user?.id);
       if (cloudData) {
         saveLocalOnly(cloudData);
       }
@@ -275,14 +340,30 @@ export default function App() {
         </nav>
 
         {/* User Block at bottom */}
-        <div className="hidden lg:flex p-6 border-t border-slate-800 items-center justify-between mt-auto bg-slate-950/40">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700">
-              <User className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-100">Senior Staff Engineer</p>
-              <p className="text-[10px] text-slate-400 font-mono uppercase">Local Workspace</p>
+        <div 
+          onClick={() => setActiveSidebarTab('supabase')}
+          className="hidden lg:flex p-6 border-t border-slate-800 items-center justify-between mt-auto bg-slate-950/40 hover:bg-slate-900/60 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5 w-full">
+            {user?.user_metadata?.avatar_url ? (
+              <img 
+                src={user.user_metadata.avatar_url} 
+                alt="Avatar" 
+                className="w-10 h-10 rounded-xl object-cover border border-slate-700"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0">
+                <User className="w-5 h-5 text-indigo-400" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-100 truncate">
+                {user ? (user.user_metadata?.full_name || user.email?.split('@')[0]) : "Guest Developer"}
+              </p>
+              <p className="text-[10px] text-slate-400 font-mono uppercase truncate">
+                {user ? "Cloud Workspace" : "Offline Sandbox"}
+              </p>
             </div>
           </div>
         </div>
@@ -481,6 +562,7 @@ export default function App() {
             applications={applications}
             onSyncComplete={(updatedApps) => setApplications(updatedApps)}
             onRefreshFromCloud={handleRefreshFromCloud}
+            user={user}
           />
         )}
 

@@ -16,12 +16,29 @@ It is currently deployed live on Vercel at: **[https://job-application-tracker-s
 
 ---
 
-## 🛠️ Supabase Configuration & Setup Instructions
+## 🛠️ Supabase Configuration, Auth & Setup Instructions
 
-To hook up your Supabase database with your Vercel deployment and local workspace:
+To hook up your Supabase database with your Vercel deployment and enable secure multi-user Google/Email accounts:
 
-### 1. Execute the Database Script
-Log in to your **Supabase Dashboard**, select your project, open the **SQL Editor**, create a **New Query**, paste the following script, and click **Run**:
+### 1. Setup the Database Schema
+
+Choose one of the two methods below to initialize or update your Supabase database schema:
+
+#### Option A: Automated Database Migration (Super Easy)
+We have provided an automated migration script that connects directly to your Supabase PostgreSQL database to create the tables, verify columns, and configure security permissions.
+
+1. In your `.env` file, add your **Database Password** (defined during your Supabase project creation):
+   ```env
+   SUPABASE_DB_PASSWORD="your-supabase-db-password"
+   ```
+   *Alternatively, you can provide the full `DATABASE_URL` transaction/session connection string.*
+2. Run the migration script command:
+   ```bash
+   npm run db:migrate
+   ```
+
+#### Option B: Manual SQL Editor (Fallback)
+Log in to your **Supabase Dashboard**, select your project, open the **SQL Editor**, create a **New Query**, paste the following script (also saved in `supabase/migrations/20260624000000_setup_job_applications.sql`), and click **Run**:
 
 ```sql
 create table if not exists public.job_applications (
@@ -40,14 +57,22 @@ create table if not exists public.job_applications (
   "currentStatus" text not null,
   "phases" jsonb not null default '[]'::jsonb,
   "postMortem" jsonb not null default '{}'::jsonb,
-  "createdAt" text not null
+  "createdAt" text not null,
+  "userId" text -- Associates opportunities with signed-in users
 );
 
 -- Disable Row Level Security (RLS) for simple integration or configure an active policy:
 alter table public.job_applications disable row level security;
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure Google Sign-In Provider (Optional but Recommended)
+1. Go to the **Google Cloud Console**, create a project, and navigate to **APIs & Services > OAuth consent screen**. Create an **External** screen.
+2. Under **Credentials > Create Credentials**, select **OAuth client ID** and set the application type to **Web Application**.
+3. In your **Supabase Dashboard**, navigate to **Authentication > Providers > Google**. Enable Google, and copy the **Redirect URI**.
+4. Paste this Redirect URI into Google Cloud Console's **Authorized redirect URIs** section, then save to generate your **Client ID** and **Client Secret**.
+5. Paste these Google credentials back into your Supabase Google Provider panel and click **Save**. You are now ready to log in with Google popups!
+
+### 3. Configure Environment Variables
 
 Create a `.env` file in your workspace root (or set them directly in Vercel):
 

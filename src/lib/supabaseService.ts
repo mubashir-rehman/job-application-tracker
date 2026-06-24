@@ -3,16 +3,24 @@ import { JobApplication } from '../types';
 
 export const supabaseService = {
   /**
-   * Fetches all job applications from the Supabase DB
+   * Fetches job applications from the Supabase DB, optionally scoped to a user
    */
-  async fetchApplications(): Promise<JobApplication[] | null> {
+  async fetchApplications(userId?: string): Promise<JobApplication[] | null> {
     if (!isSupabaseConfigured || !supabase) return null;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('job_applications')
-        .select('*')
-        .order('createdAt', { ascending: false });
+        .select('*');
+
+      if (userId) {
+        query = query.eq('userId', userId);
+      } else {
+        // If not logged in, we fetch where userId is null to avoid showing other users' records
+        query = query.is('userId', null);
+      }
+
+      const { data, error } = await query.order('createdAt', { ascending: false });
 
       if (error) {
         console.error('Error fetching from Supabase:', error);
@@ -29,13 +37,18 @@ export const supabaseService = {
   /**
    * Inserts a new job application into Supabase
    */
-  async addApplication(app: JobApplication): Promise<boolean> {
+  async addApplication(app: JobApplication, userId?: string): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
+      const record = {
+        ...app,
+        userId: userId || null
+      };
+
       const { error } = await supabase
         .from('job_applications')
-        .insert([app]);
+        .insert([record]);
 
       if (error) {
         console.error('Error adding application to Supabase:', error);
@@ -51,14 +64,25 @@ export const supabaseService = {
   /**
    * Updates an existing job application in Supabase
    */
-  async updateApplication(app: JobApplication): Promise<boolean> {
+  async updateApplication(app: JobApplication, userId?: string): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
-      const { error } = await supabase
+      const record = {
+        ...app,
+        userId: userId || null
+      };
+
+      let query = supabase
         .from('job_applications')
-        .update(app)
+        .update(record)
         .eq('id', app.id);
+
+      if (userId) {
+        query = query.eq('userId', userId);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error('Error updating application in Supabase:', error);
@@ -74,14 +98,20 @@ export const supabaseService = {
   /**
    * Deletes a job application from Supabase
    */
-  async deleteApplication(id: string): Promise<boolean> {
+  async deleteApplication(id: string, userId?: string): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase) return false;
 
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('job_applications')
         .delete()
         .eq('id', id);
+
+      if (userId) {
+        query = query.eq('userId', userId);
+      }
+
+      const { error } = await query;
 
       if (error) {
         console.error('Error deleting from Supabase:', error);
@@ -97,13 +127,18 @@ export const supabaseService = {
   /**
    * Uploads multiple records in bulk (useful for Syncing local storage)
    */
-  async bulkSync(apps: JobApplication[]): Promise<boolean> {
+  async bulkSync(apps: JobApplication[], userId?: string): Promise<boolean> {
     if (!isSupabaseConfigured || !supabase || apps.length === 0) return false;
 
     try {
+      const records = apps.map(app => ({
+        ...app,
+        userId: userId || null
+      }));
+
       const { error } = await supabase
         .from('job_applications')
-        .upsert(apps, { onConflict: 'id' });
+        .upsert(records, { onConflict: 'id' });
 
       if (error) {
         console.error('Error in bulkupsert in Supabase:', error);
