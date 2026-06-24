@@ -29,7 +29,8 @@ import {
   Sun,
   Moon,
   Eye,
-  EyeOff
+  EyeOff,
+  Github
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
@@ -685,11 +686,45 @@ export default function App() {
                   </li>
                 </ul>
               </div>
+
             </div>
           </div>
         )}
 
-
+        {/* Footer with Credits and Links */}
+        <footer className="mt-16 pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans">
+          <div className="flex items-center gap-1.5">
+            <span>Developed by</span>
+            <a 
+              href="https://mubashir-rehman.is-a.dev/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-extrabold text-slate-200 hover:text-indigo-400 dark:hover:text-indigo-400 transition-colors underline decoration-slate-800 hover:decoration-indigo-400 underline-offset-4"
+            >
+              Mubashir Rehman
+            </a>
+          </div>
+          <div className="flex items-center gap-5">
+            <a 
+              href="https://mubashir-rehman.is-a.dev/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              Portfolio
+            </a>
+            <span className="w-1 h-1 rounded-full bg-slate-800" />
+            <a 
+              href="https://github.com/mubashir-rehman/job-application-tracker" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <Github className="w-4 h-4" />
+              <span>GitHub Repo</span>
+            </a>
+          </div>
+        </footer>
 
       </main>
 
