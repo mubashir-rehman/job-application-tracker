@@ -7,6 +7,7 @@ import { PerformanceTelemetry } from './components/PerformanceTelemetry';
 import { ApplicationTable } from './components/ApplicationTable';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
+import { Footer } from './components/Footer';
 import { 
   Briefcase, 
   Layers, 
@@ -29,8 +30,7 @@ import {
   Sun,
   Moon,
   Eye,
-  EyeOff,
-  Github
+  EyeOff
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { supabaseService } from './lib/supabaseService';
@@ -205,9 +205,9 @@ export default function App() {
           
           if (err && err.message) {
             if (err.message.includes("relation") && (err.message.includes("does not exist") || err.message.includes("not found"))) {
-              userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please refer to 'supabase/migrations/' or the project README.md to run the database setup scripts inside your Supabase SQL Editor!";
+              userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please refer to 'supabase/migrations/' or the project README.md to run the data[...]
             } else if ((err.message.includes("column") || err.message.includes("attribute")) && (err.message.toLowerCase().includes("userid") || err.message.toLowerCase().includes("user_id"))) {
-              userFriendlyMessage = "Database Schema Error: The relational 'userId' column is missing or misconfigured in your 'job_applications' table. Please run the SQL schema migration script from 'supabase/migrations/20260624000000_setup_job_applications.sql' in your Supabase SQL Editor!";
+              userFriendlyMessage = "Database Schema Error: The relational 'userId' column is missing or misconfigured in your 'job_applications' table. Please run the SQL schema migration script[...]
             } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("network")) {
               userFriendlyMessage = "Network Connection Error: Unable to reach Supabase. Check your internet connection or verify VITE_SUPABASE_URL in your Vercel configurations.";
             } else if (err.message.includes("JWT") || err.message.includes("invalid") || err.message.includes("key")) {
@@ -452,7 +452,7 @@ export default function App() {
           {user && (
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="lg:hidden flex items-center gap-3 p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight text-slate-400 hover:bg-slate-800/50 hover:text-slate-100 transition-all shrink-0"
+              className="lg:hidden flex items-center gap-3 p-3 rounded-xl text-xs sm:text-sm font-bold tracking-tight text-slate-400 hover:bg-slate-800/50 hover:text-slate-100 transition-all shri[...]
               title="My Profile"
             >
               <User className="w-4.5 h-4.5 text-indigo-400" />
@@ -554,7 +554,7 @@ export default function App() {
                   <span>Application Pipeline</span>
                   <button
                     onClick={() => setShowTelemetry(!showTelemetry)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl border border-slate-800 shadow-sm text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer h-7"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl border border-[...]
                     title={showTelemetry ? "Hide Analytics Dashboard" : "Show Analytics Dashboard"}
                   >
                     {showTelemetry ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -571,7 +571,7 @@ export default function App() {
                 <Button
                   onClick={handleExportData}
                   variant="outline"
-                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl font-bold text-xs border border-slate-800 shadow-sm flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer h-auto"
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-200 rounded-xl font-bold text-xs border border-slate-800 shadow-sm flex items-center gap-1.5 transition-all w-1[...]
                   title="Export tracking JSON for Phase 2 Supabase Import"
                 >
                   <Download className="w-4 h-4 text-slate-500" />
@@ -581,7 +581,7 @@ export default function App() {
                 <Button
                   onClick={() => setIsNewAppOpen(true)}
                   id="add-application-main-btn"
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs shadow-lg shadow-indigo-500/10 hover:shadow flex items-center gap-1.5 transition-all w-1/2 sm:w-auto justify-center cursor-pointer h-auto"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs shadow-lg shadow-indigo-500/10 hover:shadow flex items-center gap-1.5 transitio[...]
                 >
                   <Plus className="w-4.5 h-4.5" />
                   <span>New Application</span>
@@ -634,7 +634,7 @@ export default function App() {
                     <Terminal className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     <h3 className="font-extrabold text-slate-100 text-base">HPC & CUDA Optimizations</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-indigo-100/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded border border-indigo-200/50 dark:border-indigo-900/40">GPU Core</span>
+                  <span className="text-[10px] font-bold bg-indigo-100/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded border border-indigo-200/50 dark:border-in[...]
                 </div>
                 
                 <p className="text-xs text-slate-400 leading-relaxed">
@@ -664,7 +664,7 @@ export default function App() {
                     <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     <h3 className="font-extrabold text-slate-100 text-base">Distributed Backend Ledgers</h3>
                   </div>
-                  <span className="text-[10px] font-bold bg-blue-100/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50 dark:border-blue-900/40">Systems</span>
+                  <span className="text-[10px] font-bold bg-blue-100/70 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50 dark:border-blue-900/40"[...]
                 </div>
                 
                 <p className="text-xs text-slate-400 leading-relaxed">
@@ -692,39 +692,7 @@ export default function App() {
         )}
 
         {/* Footer with Credits and Links */}
-        <footer className="mt-16 pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans">
-          <div className="flex items-center gap-1.5">
-            <span>Developed by</span>
-            <a 
-              href="https://mubashir-rehman.is-a.dev/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="font-extrabold text-slate-200 hover:text-indigo-400 dark:hover:text-indigo-400 transition-colors underline decoration-slate-800 hover:decoration-indigo-400 underline-offset-4"
-            >
-              Mubashir Rehman
-            </a>
-          </div>
-          <div className="flex items-center gap-5">
-            <a 
-              href="https://mubashir-rehman.is-a.dev/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              Portfolio
-            </a>
-            <span className="w-1 h-1 rounded-full bg-slate-800" />
-            <a 
-              href="https://github.com/mubashir-rehman/job-application-tracker" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              <Github className="w-4 h-4" />
-              <span>GitHub Repo</span>
-            </a>
-          </div>
-        </footer>
+        <Footer />
 
       </main>
 
@@ -784,7 +752,7 @@ export default function App() {
 
               <div className="space-y-3.5 mb-6">
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Are you sure you want to permanently remove <strong className="text-slate-100 font-extrabold">{appToDelete.companyName}</strong> ({appToDelete.targetRole}) from your recruitment pipeline?
+                  Are you sure you want to permanently remove <strong className="text-slate-100 font-extrabold">{appToDelete.companyName}</strong> ({appToDelete.targetRole}) from your recruitment[...]
                 </p>
                 {isSupabaseConfigured && user && (
                   <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800 flex items-center gap-2 text-[11px] text-slate-400">
