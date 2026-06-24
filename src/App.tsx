@@ -41,6 +41,14 @@ export default function App() {
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('hiretrack_is_guest') === 'true');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Isolate localStorage cache by user ID to prevent data leakage between sessions/guests
+  const getStorageKey = () => {
+    if (user) {
+      return `hiretrack_applications_user_${user.id}`;
+    }
+    return 'hiretrack_applications_guest';
+  };
+
   // Listen for session and popup messages
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
@@ -122,6 +130,16 @@ export default function App() {
       setIsLoading(true);
       setDbError(null);
 
+      // Seamlessly migrate legacy guest data if it exists
+      if (!localStorage.getItem('hiretrack_applications_guest') && localStorage.getItem('hiretrack_applications')) {
+        const legacyData = localStorage.getItem('hiretrack_applications');
+        if (legacyData) {
+          localStorage.setItem('hiretrack_applications_guest', legacyData);
+        }
+      }
+
+      const key = getStorageKey();
+
       // Check if Supabase is active
       if (isSupabaseConfigured) {
         try {
@@ -129,14 +147,15 @@ export default function App() {
           if (cloudData && cloudData.length > 0) {
             setApplications(cloudData);
             // Also update local cache for quick loading next time
-            localStorage.setItem('hiretrack_applications', JSON.stringify(cloudData));
+            localStorage.setItem(key, JSON.stringify(cloudData));
           } else {
             // Supabase is empty, check if we have local storage data to start with
-            const saved = localStorage.getItem('hiretrack_applications');
+            const saved = localStorage.getItem(key);
             if (saved) {
               setApplications(JSON.parse(saved));
             } else {
-              setApplications(INITIAL_APPLICATIONS);
+              // Authenticated user starts completely clean. Guest starts with mock dashboard.
+              setApplications(user ? [] : INITIAL_APPLICATIONS);
             }
           }
         } catch (err: any) {
@@ -167,16 +186,17 @@ export default function App() {
     };
 
     const loadLocalFallback = () => {
-      const saved = localStorage.getItem('hiretrack_applications');
+      const key = getStorageKey();
+      const saved = localStorage.getItem(key);
       if (saved) {
         try {
           setApplications(JSON.parse(saved));
         } catch (e) {
           console.error("Error reading saved applications, restoring defaults", e);
-          setApplications(INITIAL_APPLICATIONS);
+          setApplications(user ? [] : INITIAL_APPLICATIONS);
         }
       } else {
-        setApplications(INITIAL_APPLICATIONS);
+        setApplications(user ? [] : INITIAL_APPLICATIONS);
       }
     };
 
@@ -186,7 +206,7 @@ export default function App() {
   // Save locally (Optimistic UI fallback cache)
   const saveLocalOnly = (updatedList: JobApplication[]) => {
     setApplications(updatedList);
-    localStorage.setItem('hiretrack_applications', JSON.stringify(updatedList));
+    localStorage.setItem(getStorageKey(), JSON.stringify(updatedList));
 
     // Update selected app if it was open
     if (selectedApplication) {
