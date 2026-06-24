@@ -165,6 +165,8 @@ export default function App() {
           if (err && err.message) {
             if (err.message.includes("relation") && (err.message.includes("does not exist") || err.message.includes("not found"))) {
               userFriendlyMessage = "Supabase connection is active, but the 'job_applications' table was not found. Please click 'Supabase Bridge' in the sidebar, copy the SQL initialization script, and execute it in your Supabase SQL Editor to create the table!";
+            } else if ((err.message.includes("column") || err.message.includes("attribute")) && (err.message.toLowerCase().includes("userid") || err.message.toLowerCase().includes("user_id"))) {
+              userFriendlyMessage = "Database Schema Error: The relational 'userId' column is missing or misconfigured in your 'job_applications' table. Please go to 'Supabase Bridge' in the sidebar, copy the SQL initialization script, and execute the 'alter table' migration line to append the relational column!";
             } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("network")) {
               userFriendlyMessage = "Network Connection Error: Unable to reach Supabase. Check your internet connection or verify VITE_SUPABASE_URL in your Vercel configurations.";
             } else if (err.message.includes("JWT") || err.message.includes("invalid") || err.message.includes("key")) {

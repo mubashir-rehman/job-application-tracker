@@ -45,7 +45,7 @@ export function SupabaseBridge({ applications, onSyncComplete, onRefreshFromClou
 
   const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
 
-  const sqlSchema = `-- 1. Execute this in your Supabase SQL Editor to create or update the table
+  const sqlSchema = `-- 1. Execute this in your Supabase SQL Editor to create or update the table with relational user mapping
 create table if not exists public.job_applications (
   "id" text primary key,
   "companyName" text not null,
@@ -63,14 +63,36 @@ create table if not exists public.job_applications (
   "phases" jsonb not null default '[]'::jsonb,
   "postMortem" jsonb not null default '{}'::jsonb,
   "createdAt" text not null,
-  "userId" text -- Optional column to associate opportunities with signed-in users
+  "userId" uuid references auth.users(id) on delete cascade -- Relational foreign key linked directly to Supabase Auth users
 );
 
--- If you already have the table, you can run this to append the userId column:
--- alter table public.job_applications add column if not exists "userId" text;
+-- If you already have the table, you can run this block to migrate and add the relational userId column:
+-- alter table public.job_applications add column if not exists "userId" uuid references auth.users(id) on delete cascade;
 
--- 2. Disable Row Level Security (RLS) for simple integration, or configure a public bypass.
-alter table public.job_applications disable row level security;`;
+-- 2. Enable Row Level Security (RLS) for enterprise-grade privacy and data isolation
+alter table public.job_applications enable row level security;
+
+-- 3. Create RLS Policies to automatically isolate and protect user-specific data
+drop policy if exists "Users can view own applications" on public.job_applications;
+create policy "Users can view own applications" 
+  on public.job_applications for select 
+  using (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can insert own applications" on public.job_applications;
+create policy "Users can insert own applications" 
+  on public.job_applications for insert 
+  with check (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can update own applications" on public.job_applications;
+create policy "Users can update own applications" 
+  on public.job_applications for update 
+  using (auth.uid() = "userId" or "userId" is null)
+  with check (auth.uid() = "userId" or "userId" is null);
+
+drop policy if exists "Users can delete own applications" on public.job_applications;
+create policy "Users can delete own applications" 
+  on public.job_applications for delete 
+  using (auth.uid() = "userId" or "userId" is null);`;
 
   const handleCopySql = () => {
     navigator.clipboard.writeText(sqlSchema);
