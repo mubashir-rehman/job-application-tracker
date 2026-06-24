@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { JobApplication, WorkModelType, AppliedViaType } from '../types';
 import { createDefaultPhases } from '../data';
 import { X, Layers, Briefcase, FileText, Check } from 'lucide-react';
+import GDriveResumeUploader from './GDriveResumeUploader';
 
 interface NewApplicationModalProps {
   isOpen: boolean;
@@ -272,7 +273,12 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     value={resumeLink}
                     onChange={(e) => setResumeLink(e.target.value)}
                     placeholder="e.g. GDrive URL"
-                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono"
+                    className="text-xs bg-slate-950 border border-slate-800 p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 font-mono mb-2"
+                  />
+                  <GDriveResumeUploader 
+                    onUploadSuccess={(url) => setResumeLink(url)}
+                    currentLink={resumeLink}
+                    id="new-modal"
                   />
                 </div>
 

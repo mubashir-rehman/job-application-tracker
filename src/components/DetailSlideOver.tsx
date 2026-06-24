@@ -26,6 +26,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import GDriveResumeUploader from './GDriveResumeUploader';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -595,7 +596,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   <div className="space-y-4">
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Applied Resume Version</label>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mb-2">
                         <input
                           type="url"
                           value={editedApp.resumeLink}
@@ -614,6 +615,11 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                           </a>
                         )}
                       </div>
+                      <GDriveResumeUploader 
+                        onUploadSuccess={(url) => handleFieldChange('resumeLink', url)}
+                        currentLink={editedApp.resumeLink}
+                        id="slide-over"
+                      />
                     </div>
 
                     <div>
