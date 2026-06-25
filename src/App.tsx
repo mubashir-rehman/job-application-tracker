@@ -480,7 +480,7 @@ export default function App() {
 
         {/* ── APPLICATIONS TAB ─── */}
         {activeSidebarTab === 'applications' && (
-          <div className="space-y-8" id="tab-applications-view">
+          <div className="space-y-4" id="tab-applications-view">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-6">
               <div>
                 <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight flex flex-wrap items-center gap-3">
