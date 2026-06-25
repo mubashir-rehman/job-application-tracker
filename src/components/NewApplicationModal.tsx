@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { JobApplication, WorkModelType, AppliedViaType } from '../types';
 import { createDefaultPhases } from '../data';
 import { deriveCurrentStatus } from '../lib/appUtils';
-import { X, Layers, Briefcase, FileText, Check } from 'lucide-react';
+import { Briefcase, FileText, Check, Sparkles, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import GDriveResumeUploader from './GDriveResumeUploader';
 
 interface NewApplicationModalProps {
@@ -23,8 +23,24 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
   const [resumeLink, setResumeLink] = useState('');
   const [portfolioLink, setPortfolioLink] = useState('');
   const [keyJdRequirements, setKeyJdRequirements] = useState('');
+  const [jdUrl, setJdUrl] = useState('');
+  const [showResumeSection, setShowResumeSection] = useState(false);
+  const [useProfileResume, setUseProfileResume] = useState(true);
+  const [customResumeUrl, setCustomResumeUrl] = useState('');
+  const [generateAiResume, setGenerateAiResume] = useState(false);
+
+  const savedProfileResumeUrl = localStorage.getItem('hiretrack_profile_resume_url') || '';
+  const apiKeys = (() => { try { return JSON.parse(localStorage.getItem('hiretrack_api_keys') || '{}'); } catch { return {}; } })();
+  const hasApiKey = !!(apiKeys.openai || apiKeys.anthropic || apiKeys.gemini);
 
   const [errors, setErrors] = useState<{ companyName?: string; targetRole?: string }>({});
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -55,6 +71,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
       resumeLink: resumeLink.trim(),
       portfolioLink: portfolioLink.trim(),
       keyJdRequirements: keyJdRequirements.trim(),
+      jdUrl: jdUrl.trim() || undefined,
       phases: createDefaultPhases(),
       currentStatus: deriveCurrentStatus(createDefaultPhases()),
       postMortem: {
@@ -79,6 +96,11 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
     setResumeLink('');
     setPortfolioLink('');
     setKeyJdRequirements('');
+    setJdUrl('');
+    setShowResumeSection(false);
+    setUseProfileResume(true);
+    setCustomResumeUrl('');
+    setGenerateAiResume(false);
     setErrors({});
     onClose();
   };
@@ -313,6 +335,104 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                 className="text-xs bg-slate-950 border border-slate-800 p-3.5 rounded-2xl w-full outline-none focus:bg-slate-950 text-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 leading-relaxed font-medium"
               />
             </div>
+          </div>
+
+          {/* Section 4: Optional AI Resume */}
+          <div className="md:col-span-2">
+            <button
+              type="button"
+              onClick={() => setShowResumeSection(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-950/60 hover:bg-slate-800/60 border border-slate-800 rounded-xl text-xs font-bold text-slate-400 hover:text-indigo-400 transition"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>AI Resume Generation <span className="text-slate-600 font-normal">(optional)</span></span>
+              </div>
+              {showResumeSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showResumeSection && (
+              <div className="mt-3 p-4 bg-slate-950/40 border border-slate-800 rounded-xl space-y-4">
+                {/* Resume source */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Resume Source</p>
+
+                  {savedProfileResumeUrl ? (
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div
+                        className={`w-4 h-4 rounded border flex items-center justify-center transition ${useProfileResume ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-950'}`}
+                        onClick={() => setUseProfileResume(true)}
+                      >
+                        {useProfileResume && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-bold text-slate-300 group-hover:text-slate-100 transition">Use profile resume</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span className="text-[10px] font-mono text-slate-500 truncate">{savedProfileResumeUrl}</span>
+                        </div>
+                      </div>
+                    </label>
+                  ) : (
+                    <p className="text-[10px] text-slate-600 italic">
+                      No profile resume saved. Add one in Settings (gear icon in header).
+                    </p>
+                  )}
+
+                  <div className="space-y-1">
+                    <label
+                      className="flex items-center gap-3 cursor-pointer group"
+                      onClick={() => setUseProfileResume(false)}
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition ${!useProfileResume ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-950'}`}>
+                        {!useProfileResume && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <span className="text-xs font-bold text-slate-300 group-hover:text-slate-100 transition">Use a different resume URL</span>
+                    </label>
+                    {!useProfileResume && (
+                      <input
+                        type="url"
+                        value={customResumeUrl}
+                        onChange={e => setCustomResumeUrl(e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 transition"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* AI generation toggle */}
+                <div className="border-t border-slate-800 pt-3 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer" onClick={() => setGenerateAiResume(v => !v)}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition ${generateAiResume ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700 bg-slate-950'}`}>
+                      {generateAiResume && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-300">Generate tailored resume with AI</span>
+                      {!hasApiKey && (
+                        <span className="block text-[10px] text-amber-500 mt-0.5">No API key — add one in Settings first</span>
+                      )}
+                    </div>
+                  </label>
+
+                  {generateAiResume && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Job Posting URL</label>
+                      <input
+                        type="url"
+                        value={jdUrl}
+                        onChange={e => setJdUrl(e.target.value)}
+                        placeholder="https://linkedin.com/jobs/... or company careers page"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 transition"
+                      />
+                      <p className="text-[10px] text-slate-600">
+                        AI will tailor your resume to this job description using your BYOK API key.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Buttons footer */}

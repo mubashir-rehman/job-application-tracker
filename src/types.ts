@@ -30,6 +30,7 @@ export interface JobApplication {
   resumeLink: string;
   portfolioLink: string;
   keyJdRequirements: string;
+  jdUrl?: string; // Job posting URL — used for AI resume generation
   currentStatus: string; // E.g., 'Application Submitted', 'Technical Interview', 'Offer', etc.
   phases: InterviewPhase[]; // Exactly 7 items corresponding to the 7 phases
   postMortem: PostMortem;

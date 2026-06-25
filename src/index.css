@@ -6,20 +6,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar Styles — hidden by default, appears on hover/scroll */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: transparent;
   border-radius: 9999px;
+  transition: background 0.2s;
+}
+html:hover ::-webkit-scrollbar-thumb,
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.45);
 }
 
 /* Background grid accent - Light/Dark adaptive */
@@ -227,10 +232,11 @@ select option {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 }

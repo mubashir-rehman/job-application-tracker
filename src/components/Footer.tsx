@@ -6,7 +6,7 @@ interface FooterProps {
 
 export function Footer({ showLinks = true }: FooterProps) {
   return (
-    <footer className="mt-16 pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans">
+    <footer className="mt-auto pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans">
       <div className="flex items-center gap-1.5">
         <span>Developed by</span>
         <a 

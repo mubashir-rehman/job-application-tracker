@@ -147,7 +147,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent 
-        className="sm:max-w-5xl lg:max-w-7xl h-[92vh] md:h-[86vh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 rounded-[2rem] shadow-[0_0_80px_rgba(99,102,241,0.15)] focus:outline-none"
+        className="sm:max-w-5xl lg:max-w-7xl h-[92dvh] md:h-[86dvh] max-h-[92dvh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 rounded-[2rem] shadow-[0_0_80px_rgba(99,102,241,0.15)] focus:outline-none"
         showCloseButton={false}
       >
         {/* Banner Sticky Header */}
@@ -199,7 +199,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/10'
                 }`}
               >
-                <Save className="w-4 h-4 animate-pulse" />
+                <Save className="w-4 h-4" />
                 {isSaved ? 'Synced Successfully!' : 'Sync Changes'}
               </Button>
 

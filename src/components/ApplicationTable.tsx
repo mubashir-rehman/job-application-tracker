@@ -127,6 +127,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 <select
                   id="workmodel-filter"
+                  aria-label="Filter by work model"
                   value={workModelFilter}
                   onChange={(e) => setWorkModelFilter(e.target.value)}
                   className="text-xs font-semibold bg-transparent border-none py-0 pl-1 pr-6 outline-none text-slate-300 focus:ring-0 cursor-pointer"
@@ -143,6 +144,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                 <Filter className="w-3.5 h-3.5 text-slate-400" />
                 <select
                   id="status-filter"
+                  aria-label="Filter by pipeline status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="text-xs font-semibold bg-transparent border-none py-0 pl-1 pr-6 outline-none text-slate-300 focus:ring-0 cursor-pointer"
@@ -159,6 +161,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort:</span>
                 <select
                   id="sort-select"
+                  aria-label="Sort applications"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="text-xs font-semibold bg-transparent border-none py-0 pl-1 pr-6 outline-none text-slate-300 focus:ring-0 cursor-pointer"
@@ -179,7 +182,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
         <CardContent className="p-0">
           {filteredAndSortedApplications.length === 0 ? (
             <div className="py-20 text-center" id="empty-state">
-              <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4 animate-bounce" />
+              <Briefcase className="w-12 h-12 text-slate-600 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-slate-300">Start your first interview pipeline</h3>
               <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto">
                 Every dream offer begins with a single application. Click the <strong className="text-indigo-600 dark:text-indigo-400">"New Application"</strong> button to start tracking your performance.
@@ -191,12 +194,12 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
               <table className="w-full text-left border-collapse hidden md:table" id="apps-table">
                 <thead>
                   <tr className="bg-slate-900/30 border-b border-slate-800">
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[25%]">Company & Role</th>
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[25%]">Pipeline Progress</th>
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[16%]">Workflow Status</th>
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[14%]">Logistics</th>
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[12%]">Compensation</th>
-                    <th className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[8%]">Actions</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[25%]">Company & Role</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[25%]">Pipeline Progress</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[16%]">Workflow Status</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[14%]">Logistics</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[12%]">Compensation</th>
+                    <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-[8%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/40">
@@ -314,7 +317,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
 
                         {/* Actions buttons */}
                         <td className="px-6 py-5.5 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => onSelectApplication(app)}
                               className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all"
@@ -324,7 +327,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                             </button>
                             <button
                               onClick={(e) => onDeleteApplication(app.id, e)}
-                              className="p-2 hover:bg-rose-55 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-all"
+                              className="p-2 hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-all"
                               title="Delete pipeline logs"
                             >
                               <Trash2 className="w-4 h-4" />
