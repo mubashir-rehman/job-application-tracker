@@ -2,11 +2,15 @@ import { Github } from 'lucide-react';
 
 interface FooterProps {
   showLinks?: boolean;
+  /** Slim variant for the sticky shell footer bar — drops the standalone top border/spacing. */
+  compact?: boolean;
 }
 
-export function Footer({ showLinks = true }: FooterProps) {
+export function Footer({ showLinks = true, compact = false }: FooterProps) {
   return (
-    <footer className="mt-auto pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans">
+    <footer className={`flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-semibold font-sans ${
+      compact ? '' : 'mt-auto pt-8 border-t border-slate-800/60'
+    }`}>
       <div className="flex items-center gap-1.5">
         <span>Developed by</span>
         <a 

@@ -30,6 +30,24 @@ Vercel Function → uses key once → calls LLM → returns result → key never
 
 ---
 
+## Consolidated Build Tracks (2026-06-26)
+
+Full designs: **`docs/PIPELINE.md`** (automated application pipeline + local resume source + knowledge bank) and **`docs/DESIGN.md`** (native-experience revamp, desktop-first).
+
+Locked decisions: assisted **with approval gates** · built **into HireTrack (Vercel + Supabase, BYOK)** · **paste JD/URL** intake · **local-first** resume source (FS Access API, replaces disabled Drive).
+
+| Track | Scope | Depends on | Owning skills |
+|---|---|---|---|
+| **1 — UI (priority)** | D1 tokens + light/dark fix → D2 desktop adaptive shell (3-pane, pipeline rail, ⌘K, keyboard) → D3 migrate views | — | `frontend-design` |
+| **2 — Data/AI (parallel)** | `master_resume` + knowledge-bank tables · corrected master-CV prompt · intake/tailor/render/ATS functions | — | `supabase-postgres-best-practices`, `/knowledge-base`, `/resume-generator`, `/document-generator`, `/prompt-manager` |
+| **3 — Pipeline UI** | intake → approval gate → tracker + knowledge-bank dashboard, into the new shell | 1 & 2 | `frontend-design` |
+| **4 — Mobile + PWA** | D4 PWA → D5 mobile shell (bottom nav, sheets, gestures) → D6 polish/a11y | 1 | `frontend-design` |
+| **5 — Pipeline B/C/D** | research/scoring · outreach/verify · follow-up · prep · retro→bank loop · browser-capture · outcome analytics | 3 | `/resume-generator`, `/test-runner`, `/prompt-manager` |
+
+**Map to existing phases:** Track 2 + Track 5 deliver Phase 2–3 (AI Resume Builder + LLM). Track 1/3/4 deliver the Phase 1 dashboard reimagination (D1–D4 items) and clear much of the Phase 1 UI/UX backlog. Track 5 retro→bank loop delivers Phase 4 (personalization).
+
+---
+
 ## Phase 0: Codebase Integrity (ACTIVE)
 
 ### Logic Errors Fixed (from audit — 20 issues)
@@ -75,8 +93,8 @@ Vercel Function → uses key once → calls LLM → returns result → key never
 - [x] **1.2** NewApplicationModal 2-col grid overflows on small screens → `grid-cols-1 sm:grid-cols-2`
 
 ### Dashboard Reimagination (HIGH PRIORITY)
-- [ ] **D1** Remove "Technical Skill Matrix" sidebar tab entirely
-- [ ] **D2** Add "Resume Builder" sidebar tab (new section — BYOK)
+- [x] **D1** Remove "Technical Skill Matrix" sidebar tab entirely — new shell sidebar has no skill-matrix nav (D2 shell)
+- [x] **D2** Add "Resume Builder" sidebar tab (new section — BYOK) — added as nav stub ("Soon") alongside Knowledge Bank
 - [ ] **D3** Scaffold Resume Builder page: BYOK key setup + Generate Resume form + history list
 - [ ] **D4** PerformanceTelemetry rewritten as generic Pipeline Analytics (3 cards: health score, stage distribution, conversion metrics)
 
@@ -90,11 +108,11 @@ Vercel Function → uses key once → calls LLM → returns result → key never
 - [ ] **3.8** User sidebar block uses div with onClick, not button (App.tsx:465-524)
 - [ ] **1.4** Sidebar has no vertical scroll for overflow (App.tsx:380)
 - [ ] **1.5** ApplicationTable actions invisible on touch devices
-- [ ] **3.2** Search input and selects missing associated labels (ApplicationTable.tsx)
+- [x] **3.2** Search input and selects missing associated labels — added sr-only label to search; selects already have aria-label (D2 shell)
 - [ ] **3.3** Toast notifications not announced to screen readers
 - [ ] **3.5** No aria-expanded on telemetry toggle
 - [ ] **3.6** Table headers missing scope attributes
-- [ ] **3.7** No prefers-reduced-motion support
+- [x] **3.7** No prefers-reduced-motion support — global `@media (prefers-reduced-motion)` reset added (D1)
 - [ ] **4.1** Table card extreme border radius clips headers
 - [ ] **4.2** Timeline connector line misaligned with phase circles (DetailSlideOver.tsx:288,298)
 - [ ] **4.3** `overflow-x-hidden` on main content clips potential content
@@ -111,7 +129,7 @@ Vercel Function → uses key once → calls LLM → returns result → key never
 - [ ] **8.1** NewApplicationModal does not use glass-panel
 - [ ] **8.2** Toast notifications bypass glass-panel system
 - [ ] **8.4** Many components hardcode slate colors instead of glass variables
-- [ ] **8.5** Light mode glass effect nearly invisible
+- [x] **8.5** Light mode glass effect nearly invisible — fixed at token level (visible hairline border + elevation), verified light+dark (D1)
 
 ---
 
@@ -223,3 +241,13 @@ Vercel Function → uses key once → calls LLM → returns result → key never
 | 2026-06-25 | Created 5 Claude commands | ✅ |
 | 2026-06-25 | Rewrote PerformanceTelemetry as generic Pipeline Analytics | ✅ |
 | 2026-06-25 | Reimagined dashboard vision: two use cases | 🔄 In Progress |
+| 2026-06-26 | Designed full automated application pipeline → docs/PIPELINE.md | ✅ |
+| 2026-06-26 | Added local-first resume source (FS Access API) to pipeline | ✅ |
+| 2026-06-26 | Designed personal-profile knowledge bank (interview gaps/strengths) | ✅ |
+| 2026-06-26 | Designed native-experience revamp (desktop-first) → docs/DESIGN.md | ✅ |
+| 2026-06-26 | Consolidated build tracks added to task.md | ✅ |
+| 2026-06-26 | Branch `redesign`: D1 design tokens (motion/elevation/glass) + light/dark glass fix + reduced-motion; verified light+dark via Playwright | ✅ |
+| 2026-06-26 | D2 desktop shell: AppShell + Sidebar + ⌘K command palette (cmdk); slim top bar, sticky footer, constrained filter panel; extracted SettingsModal, removed Header.tsx, added usePlatform; verified both themes via Playwright | ✅ |
+| 2026-06-26 | D2 detail pane: adaptive DetailSlideOver (inline pane on ≥1280, overlay sheet below) via container queries; list compacts to cards when pane open; slimmed filter card height; verified via Playwright | ✅ |
+| 2026-06-26 | Detail pane full revamp: purpose-driven single-scroll journal — status header + next-action, velocity-aware pipeline spine (time-in-stage, stall→follow-up nudge), collapsible Details/Contacts/Retro; plain language (dropped cockpit/telemetry jargon); dropped dead GDriveResumeUploader usage; verified light+dark | ✅ |
+| 2026-06-26 | New Application form revamp: JD-first primary field (autofill keywords) + required company/role + Saved/Applied/Interviewing status segmented + applied date + via, collapsible "More details" (work model, location, comp, benefits, recruiter, resume/portfolio, requirements, priority); buildPhases per intake status; added jdText + priority to types; dropped dead AI-resume block + GDriveResumeUploader; verified collapsed+expanded via Playwright | ✅ |

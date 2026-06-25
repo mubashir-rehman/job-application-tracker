@@ -9,9 +9,11 @@ interface ApplicationTableProps {
   applications: JobApplication[];
   onSelectApplication: (app: JobApplication) => void;
   onDeleteApplication: (id: string, e: React.MouseEvent) => void;
+  /** Force the compact card list (used when the detail pane narrows the list column). */
+  compact?: boolean;
 }
 
-export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication }: ApplicationTableProps) {
+export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication, compact = false }: ApplicationTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [workModelFilter, setWorkModelFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -103,19 +105,19 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
   return (
     <div className="space-y-6" id="applications-table-section">
       {/* Search and Filters panel */}
-      <Card className="glass-panel border border-slate-800 shadow-sm">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
+      <div className="glass-panel rounded-xl px-4 py-2.5">
+        <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
             
             {/* Search Input */}
-            <div className="relative flex-1">
+            <div className="relative w-full lg:max-w-sm">
+              <label htmlFor="search-input" className="sr-only">Search applications</label>
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 id="search-input"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by company, role, stack requirements or location..."
+                placeholder="Search company, role, stack, location…"
                 className="pl-10 pr-4 py-2.5 w-full text-sm bg-slate-950/60 border border-slate-800 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 focus:bg-slate-950 text-slate-100 placeholder-slate-500 transition"
               />
             </div>
@@ -174,8 +176,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Table grid wrapper */}
       <Card className="glass-panel rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
@@ -191,7 +192,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
           ) : (
             <div className="overflow-x-auto">
               {/* Desktop Table view */}
-              <table className="w-full text-left border-collapse hidden md:table" id="apps-table">
+              <table className={`w-full text-left border-collapse ${compact ? 'hidden' : 'hidden md:table'}`} id="apps-table">
                 <thead>
                   <tr className="bg-slate-900/30 border-b border-slate-800">
                     <th scope="col" className="px-6 py-4.5 text-[10px] font-black text-slate-500 uppercase tracking-widest w-[25%]">Company & Role</th>
@@ -340,8 +341,8 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                 </tbody>
               </table>
 
-              {/* Mobile Card view */}
-              <div className="grid grid-cols-1 gap-4 p-4 md:hidden" id="apps-mobile-grid">
+              {/* Card view — always on mobile; forced on desktop when compact (pane open) */}
+              <div className={`grid grid-cols-1 gap-4 p-4 ${compact ? '' : 'md:hidden'}`} id="apps-mobile-grid">
                 {filteredAndSortedApplications.map((app) => {
                   const completedPhases = app.phases.filter(p => p.status === 'completed').length;
                   const totalPhases = app.phases.length;

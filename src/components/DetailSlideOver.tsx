@@ -1,27 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { JobApplication, InterviewPhase, WorkModelType, AppliedViaType } from '../types';
 import { deriveCurrentStatus } from '../lib/appUtils';
 import {
-  X,
-  Calendar,
-  ExternalLink,
-  Award,
-  Star,
-  Save,
-  Database,
-  Info,
-  Layers,
-  ListChecks,
-  ThumbsUp,
-  ThumbsDown,
-  ChevronDown,
-  ChevronUp,
-  FileText
+  X, Save, ArrowRight, GitBranch, MessageSquare, ThumbsUp, ThumbsDown,
+  Quote, Clock, ChevronDown, Calendar, Link2, ExternalLink, Users,
+  Award, Star, Briefcase,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import GDriveResumeUploader from './GDriveResumeUploader';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface DetailSlideOverProps {
@@ -29,741 +14,444 @@ interface DetailSlideOverProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdateApplication: (app: JobApplication) => void;
+  /** Render inline as a shell column (desktop) instead of an overlay sheet (mobile/narrow). */
+  asPane?: boolean;
 }
 
-export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication }: DetailSlideOverProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'core' | 'mortem'>('timeline');
+// ── helpers ──────────────────────────────────────────────
+const cleanPhaseName = (n: string) => n.replace(/^Phase\s*\d+:\s*/i, '');
+const fmtDate = (d: string) =>
+  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+const daysBetween = (a: string, b: string) => {
+  if (!a || !b) return null;
+  const d = Math.round((+new Date(b) - +new Date(a)) / 86400000);
+  return isNaN(d) ? null : d;
+};
+const daysSince = (a: string) => {
+  if (!a) return null;
+  const d = Math.round((Date.now() - +new Date(a)) / 86400000);
+  return isNaN(d) ? null : d;
+};
+
+const STATUS_CYCLE: InterviewPhase['status'][] = ['upcoming', 'active', 'completed', 'skipped'];
+
+// Module-level so they keep a stable identity across renders (otherwise the
+// inputs they wrap would remount and lose focus on every keystroke).
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Section({ icon: Icon, title, hint, open, onToggle, children }: {
+  icon: any; title: string; hint?: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="border-t border-slate-800/70">
+      <button onClick={onToggle} className="w-full flex items-center gap-2.5 py-3.5 text-left" aria-expanded={open}>
+        <Icon className="w-4 h-4 text-slate-500 shrink-0" />
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{title}</span>
+        {hint && <span className="text-[11px] text-slate-600 font-medium truncate">{hint}</span>}
+        <ChevronDown className={`w-4 h-4 text-slate-500 ml-auto shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="pb-5 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false }: DetailSlideOverProps) {
   const [editedApp, setEditedApp] = useState<JobApplication | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({});
+  const [openSections, setOpenSections] = useState({ details: false, contacts: false, retro: false });
 
-  // Sync state with selected application
   useEffect(() => {
     if (application) {
-      setEditedApp(JSON.parse(JSON.stringify(application))); // deep clone
+      setEditedApp(JSON.parse(JSON.stringify(application)));
       setIsSaved(false);
     } else {
       setEditedApp(null);
     }
   }, [application]);
 
-  // Initialize expanded phases (active phase is expanded initially, or first if none is active)
+  // Expand the active phase (or the first) on open.
   useEffect(() => {
-    if (editedApp) {
-      const initial: Record<number, boolean> = {};
-      let hasActive = false;
-      editedApp.phases.forEach((p, idx) => {
-        if (p.status === 'active') {
-          initial[idx] = true;
-          hasActive = true;
-        } else {
-          initial[idx] = false;
-        }
-      });
-      // If no phase is active, expand the first one
-      if (!hasActive && editedApp.phases.length > 0) {
-        initial[0] = true;
-      }
-      setExpandedPhases(initial);
-    }
+    if (!editedApp) return;
+    const initial: Record<number, boolean> = {};
+    let hasActive = false;
+    editedApp.phases.forEach((p, idx) => {
+      initial[idx] = p.status === 'active';
+      if (p.status === 'active') hasActive = true;
+    });
+    if (!hasActive && editedApp.phases.length > 0) initial[0] = true;
+    setExpandedPhases(initial);
   }, [editedApp?.id]);
 
   if (!editedApp) return null;
 
-  const togglePhaseExpanded = (index: number, forceValue?: boolean) => {
-    setExpandedPhases(prev => ({
-      ...prev,
-      [index]: forceValue !== undefined ? forceValue : !prev[index]
-    }));
-  };
+  const togglePhase = (i: number) =>
+    setExpandedPhases(prev => ({ ...prev, [i]: !prev[i] }));
 
-  const handleFieldChange = (field: keyof JobApplication, value: any) => {
-    if (!editedApp) return;
-    const updated = { ...editedApp, [field]: value };
-    setEditedApp(updated);
-  };
+  const handleFieldChange = (field: keyof JobApplication, value: any) =>
+    setEditedApp(prev => prev ? { ...prev, [field]: value } : prev);
 
   const handlePhaseChange = (index: number, key: keyof InterviewPhase, value: any) => {
-    if (!editedApp) return;
-    const updatedPhases = [...editedApp.phases];
-    updatedPhases[index] = { ...updatedPhases[index], [key]: value };
-
-    // Always recompute currentStatus from phases after any phase field change
-    const computedStatus = deriveCurrentStatus(updatedPhases);
-
-    if (key === 'status') {
-      setExpandedPhases(prev => ({
-        ...prev,
-        [index]: true
-      }));
-    }
-
-    const updated = {
-      ...editedApp,
-      phases: updatedPhases,
-      currentStatus: computedStatus
-    };
-    setEditedApp(updated);
+    setEditedApp(prev => {
+      if (!prev) return prev;
+      const phases = [...prev.phases];
+      phases[index] = { ...phases[index], [key]: value };
+      return { ...prev, phases, currentStatus: deriveCurrentStatus(phases) };
+    });
+    if (key === 'status') setExpandedPhases(prev => ({ ...prev, [index]: true }));
   };
 
-  const handlePostMortemChange = (key: string, value: any) => {
-    if (!editedApp) return;
-    const updated = {
-      ...editedApp,
-      postMortem: {
-        ...editedApp.postMortem,
-        [key]: value
-      }
-    };
-    setEditedApp(updated);
-  };
+  const handlePostMortemChange = (key: string, value: any) =>
+    setEditedApp(prev => prev ? { ...prev, postMortem: { ...prev.postMortem, [key]: value } } : prev);
 
   const handleSave = () => {
-    if (!editedApp) return;
     onUpdateApplication(editedApp);
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
+    setTimeout(() => setIsSaved(false), 2200);
   };
 
-  const getStatusBadgeStyle = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('offer')) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-    if (s.includes('reject') || s.includes('archived') || s.includes('failed')) return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-    if (s.includes('phone') || s.includes('screen')) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-    return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+  // ── derived status / velocity ──────────────────────────
+  const phases = editedApp.phases;
+  const completedCount = phases.filter(p => p.status === 'completed').length;
+  const activeIndex = phases.findIndex(p => p.status === 'active');
+  const lastIndex = phases.length - 1;
+  const activePhase = activeIndex !== -1 ? phases[activeIndex] : null;
+
+  const timeInStage = activePhase
+    ? daysSince(activePhase.date || editedApp.createdAt)
+    : daysSince(editedApp.createdAt);
+  const stalled = activeIndex !== -1 && timeInStage != null && timeInStage >= 10;
+
+  let nextAction = 'Log your application progress.';
+  if (activeIndex !== -1) {
+    nextAction = activeIndex === lastIndex
+      ? 'Offer stage — review and negotiate.'
+      : `Awaiting the outcome of ${cleanPhaseName(phases[activeIndex].name)}.`;
+  } else if (completedCount === phases.length) {
+    nextAction = 'Pipeline complete.';
+  } else if (completedCount > 0) {
+    nextAction = 'Advance to the next stage.';
+  }
+
+  // most recent earlier date, used to measure how long each step took
+  const prevDate = (i: number) => {
+    for (let j = i - 1; j >= 0; j--) if (phases[j].date) return phases[j].date;
+    return editedApp.createdAt;
   };
 
-  // Determine elapsed days since application creation
-  const getElapsedDays = () => {
-    if (!editedApp.createdAt) return 1;
-    const diff = Date.now() - new Date(editedApp.createdAt).getTime();
-    return Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
+  const statusTone = (s: string) => {
+    const t = s.toLowerCase();
+    if (t.includes('offer')) return 'text-emerald-500';
+    if (t.includes('reject') || t.includes('archived') || t.includes('fail')) return 'text-rose-500';
+    return 'text-indigo-500 dark:text-indigo-400';
   };
 
-  // Helper values for active step indicator
-  const completedPhasesCount = editedApp.phases.filter(p => p.status === 'completed').length;
-  const activePhaseIndex = editedApp.phases.findIndex(p => p.status === 'active');
+  const toggleSection = (id: keyof typeof openSections) =>
+    setOpenSections(p => ({ ...p, [id]: !p[id] }));
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent 
-        className="sm:max-w-5xl lg:max-w-7xl h-[92dvh] md:h-[86dvh] max-h-[92dvh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 rounded-[2rem] shadow-[0_0_80px_rgba(99,102,241,0.15)] focus:outline-none"
-        showCloseButton={false}
-      >
-        {/* Banner Sticky Header */}
-        <div className="bg-slate-950 border-b border-slate-900/80 p-6 flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-4">
-          <div className="flex items-center gap-4">
-            {/* Logo Initial */}
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 flex items-center justify-center font-black font-display text-xl shrink-0">
+  const inputCls = 'w-full bg-slate-950/50 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-indigo-500 transition';
+
+  // ── body ───────────────────────────────────────────────
+  const body = (
+    <>
+      {/* Status header */}
+      <header className="shrink-0 px-5 pt-5 pb-4 border-b border-slate-800/70">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-black font-display text-lg shrink-0">
               {editedApp.companyName.charAt(0)}
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-2xl font-black font-display text-slate-100 tracking-tight">{editedApp.companyName}</h2>
-                <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider px-3 py-0.5 rounded-full border ${getStatusBadgeStyle(editedApp.currentStatus)}`}>
-                  ● {editedApp.currentStatus}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-100">{editedApp.targetRole}</span>
-                <span className="text-slate-600 font-bold">•</span>
-                <span className="text-[11px] font-bold font-mono text-slate-400">{editedApp.location}</span>
-                <span className="text-slate-600 font-bold">•</span>
-                <span className="text-[11px] font-bold font-mono text-indigo-600 dark:text-indigo-400">{editedApp.salaryRange}</span>
-              </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-black font-display text-slate-100 tracking-tight truncate">{editedApp.companyName}</h2>
+              <p className="text-xs text-slate-400 font-medium truncate">
+                {editedApp.targetRole} · {editedApp.workModel} · <span className="font-mono text-slate-300">{editedApp.salaryRange}</span>
+              </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-4.5">
-            {/* Metric widgets inside header */}
-            <div className="hidden sm:flex items-center gap-6 pr-6 border-r border-slate-900/80">
-              <div className="text-right">
-                <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest font-mono block">pipeline state</span>
-                <span className="text-xs font-black text-slate-300 font-mono">Phase {completedPhasesCount + (activePhaseIndex !== -1 ? 1 : 0)} / 7</span>
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest font-mono block">time elapsed</span>
-                <span className="text-xs font-black text-indigo-400 font-mono">Day {getElapsedDays()}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3.5">
-              {/* Save Button */}
-              <Button
-                onClick={handleSave}
-                id="save-application-btn"
-                className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all shadow h-auto ${
-                  isSaved 
-                    ? 'bg-emerald-500 text-white' 
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/10'
-                }`}
-              >
-                <Save className="w-4 h-4" />
-                {isSaved ? 'Synced Successfully!' : 'Sync Changes'}
-              </Button>
-
-              {/* Close Button */}
-              <button 
-                onClick={onClose}
-                className="p-2.5 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-full border border-slate-800/80 transition cursor-pointer"
-                title="Exit cockpit"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              onClick={handleSave}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 h-auto transition ${
+                isSaved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}
+            >
+              <Save className="w-3.5 h-3.5" />
+              {isSaved ? 'Saved' : 'Save'}
+            </Button>
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition" aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Tab Selection Layout */}
-        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col min-h-0">
-          <div className="bg-slate-950/20 px-8 pt-1.5 border-b border-slate-900/60 flex shrink-0">
-            <TabsList variant="line" className="gap-8 bg-transparent p-0">
-              <TabsTrigger 
-                value="timeline" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
-              >
-                <ListChecks className="w-4 h-4 mr-1.5 text-indigo-400" />
-                Pipeline Timeline & Signals
-              </TabsTrigger>
-              <TabsTrigger 
-                value="core" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
-              >
-                <Info className="w-4 h-4 mr-1.5 text-blue-400" />
-                Employment & Assets
-              </TabsTrigger>
-              <TabsTrigger 
-                value="mortem" 
-                className="pb-3 text-xs font-black transition-all data-active:border-indigo-500 data-active:text-slate-100 border-b-2 border-transparent text-slate-500 hover:text-slate-200 rounded-none bg-transparent data-active:bg-transparent h-auto cursor-pointer uppercase tracking-wider"
-              >
-                <Award className="w-4 h-4 mr-1.5 text-emerald-400" />
-                Telemetry Post-Mortem
-              </TabsTrigger>
-            </TabsList>
+        {/* current stage + next action */}
+        <div className="mt-3.5 flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-sm">
+            <span className={`text-base leading-none ${statusTone(editedApp.currentStatus)}`}>●</span>
+            <span className="font-bold text-slate-200">{editedApp.currentStatus}</span>
+            {timeInStage != null && activeIndex !== -1 && (
+              <span className="text-[11px] font-mono text-slate-500">· {timeInStage}d in stage</span>
+            )}
+          </div>
+          <div className="flex items-start gap-1.5 text-xs text-slate-400">
+            <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-slate-600 shrink-0" />
+            <span>{nextAction}</span>
+          </div>
+          {stalled && (
+            <div className="mt-1.5 flex items-center gap-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              Quiet for {timeInStage} days — consider a follow-up.
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Scroll body */}
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="max-w-2xl mx-auto">
+
+          {/* PIPELINE spine */}
+          <div className="flex items-center gap-2 mb-4">
+            <GitBranch className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline</span>
+            <span className="text-[11px] text-slate-600 font-mono ml-auto">{completedCount}/{phases.length} stages</span>
           </div>
 
-          {/* Tab Content Box - Scrollable */}
-          <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0 bg-slate-950/10">
-            
-            {/* TAB 1: TIMELINE */}
-            <TabsContent value="timeline" className="outline-none mt-0 max-w-4xl mx-auto pl-4">
-              <div className="space-y-8 relative pl-4">
-                {/* Dynamic vertical connector line */}
-                <div className="absolute left-8 top-4 bottom-8 w-[1.5px] bg-slate-850" />
+          <div className="relative">
+            {phases.map((phase, i) => {
+              const isActive = phase.status === 'active';
+              const isCompleted = phase.status === 'completed';
+              const isSkipped = phase.status === 'skipped';
+              const expanded = !!expandedPhases[i];
+              const gap = isActive
+                ? (daysSince(phase.date || prevDate(i)) != null ? `${daysSince(phase.date || prevDate(i))}d in stage` : 'now')
+                : isCompleted && phase.date
+                  ? (() => { const g = daysBetween(prevDate(i), phase.date); return g == null ? '' : g <= 0 ? 'same day' : `${g}d`; })()
+                  : '';
 
-                {editedApp.phases.map((phase, i) => {
-                  const isActive = phase.status === 'active';
-                  const isCompleted = phase.status === 'completed';
-                  const isExpanded = !!expandedPhases[i];
-                  return (
-                    <div key={i} className="relative pl-12 group" id={`phase-row-${i}`}>
-                  
-                  {/* Circle icon on the left vertical thread line */}
-                  <div className="absolute left-3 top-1.5 z-10">
-                    <div 
-                      onClick={() => {
-                        const nextStatus = isCompleted ? 'active' : isActive ? 'skipped' : 'completed';
-                        handlePhaseChange(i, 'status', nextStatus);
-                      }}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ring-4 ring-slate-950 cursor-pointer shadow-md transition-all ${
-                        isCompleted 
-                          ? 'bg-emerald-500 text-white' 
-                          : isActive 
-                            ? 'bg-indigo-600 text-white ring-indigo-500/20 scale-110 shadow-lg shadow-indigo-600/20'
-                            : 'bg-slate-900 text-slate-500 border border-slate-800'
-                      }`}
-                      title="Click to quickly toggle stage status"
-                    >
-                      {isCompleted ? '✓' : i + 1}
-                    </div>
-                  </div>
-
-                    {/* Timeline card container */}
-                    <div className={`glass-panel p-6 rounded-[2rem] border transition-all duration-300 ${
-                      isActive 
-                        ? 'border-indigo-500/30 bg-slate-900/60 shadow-[0_0_40px_rgba(99,102,241,0.06)]' 
-                        : isCompleted
-                          ? 'border-emerald-500/10 bg-slate-900/10'
-                          : 'border-slate-900 bg-slate-900/10 opacity-70 hover:opacity-100'
-                    }`}>
-                      
-                      {/* Card Header: Stage Title & Segmented Button State Switcher / Accordion Trigger */}
-                      <div 
-                        onClick={() => togglePhaseExpanded(i)}
-                        className={`flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer select-none ${isExpanded ? 'border-b border-slate-900 pb-4 mb-5' : ''}`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div>
-                            <span className="text-[9px] font-extrabold text-indigo-400 uppercase tracking-widest font-mono block">Phase {i+1} Calibration</span>
-                            <h4 className={`text-base font-black tracking-tight ${isActive ? 'text-indigo-400' : 'text-slate-100'} flex items-center gap-2 flex-wrap`}>
-                              <span>{phase.name}</span>
-                              {!isExpanded && (
-                                <span className={`text-[9px] uppercase px-2 py-0.5 rounded-md font-mono font-bold tracking-widest ${
-                                  isCompleted 
-                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25' 
-                                    : isActive 
-                                      ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/25 animate-pulse' 
-                                      : phase.status === 'skipped'
-                                        ? 'bg-slate-800/60 text-slate-400 border border-slate-700/20'
-                                        : 'bg-slate-900/80 text-slate-500 border border-slate-800/80'
-                                }`}>
-                                  {phase.status}
-                                </span>
-                              )}
-                            </h4>
-                          </div>
-                          
-                          {/* Collapsed indicators of content presence */}
-                          {!isExpanded && (
-                            <div className="flex gap-1.5 ml-2 shrink-0">
-                              {phase.pros && <ThumbsUp className="w-3.5 h-3.5 text-emerald-500" title="Has positive signals" />}
-                              {phase.cons && <ThumbsDown className="w-3.5 h-3.5 text-rose-500" title="Has risk flags" />}
-                              {(phase.remarks || phase.feedback) && <FileText className="w-3.5 h-3.5 text-indigo-400" title="Has notes or feedback quotes" />}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Date Picker + Satisfying Segmented State Switcher (when expanded) OR Simple Date pill (when collapsed) */}
-                        <div className="flex flex-wrap items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          {isExpanded ? (
-                            <>
-                              {/* Mini Date Block */}
-                              <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-900">
-                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                                <input
-                                  type="date"
-                                  value={phase.date}
-                                  onChange={(e) => handlePhaseChange(i, 'date', e.target.value)}
-                                  className="text-xs bg-transparent border-none p-0 outline-none font-bold text-slate-300 focus:ring-0 w-28"
-                                />
-                              </div>
-
-                              {/* Segmented Button Selection controls (Satisfying!) */}
-                              <div className="bg-slate-950 p-1 rounded-xl border border-slate-900 flex gap-0.5">
-                                {(['upcoming', 'active', 'completed', 'skipped'] as const).map((st) => (
-                                  <button
-                                    key={st}
-                                    type="button"
-                                    onClick={() => handlePhaseChange(i, 'status', st)}
-                                    className={`px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                                      phase.status === st 
-                                        ? st === 'completed'
-                                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black'
-                                          : st === 'active'
-                                            ? 'bg-indigo-600 text-white'
-                                            : st === 'skipped'
-                                              ? 'bg-slate-800 text-slate-300'
-                                              : 'bg-slate-800/80 text-slate-400'
-                                        : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/50'
-                                    }`}
-                                  >
-                                    {st}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          ) : (
-                            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-900">
-                              {phase.date ? new Date(phase.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}
-                            </span>
-                          )}
-
-                          {/* Expand/Collapse Chevron Button */}
-                          <button
-                            type="button"
-                            onClick={() => togglePhaseExpanded(i)}
-                            className="p-1.5 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-900/80 transition cursor-pointer"
-                            title={isExpanded ? 'Collapse details' : 'Expand details'}
-                          >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Expanded Panel */}
-                      {isExpanded && (
-                        <div className="space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
-                          {/* Signals & Textarea Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                            
-                            {/* Positive Signals - Left Green Border */}
-                            <div className="bg-emerald-500/[0.02] border border-emerald-500/10 border-l-4 border-l-emerald-500 rounded-2xl p-4.5 space-y-2">
-                              <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <ThumbsUp className="w-3.5 h-3.5" />
-                                Positive Signals & Pros
-                              </label>
-                              <textarea
-                                rows={3}
-                                value={phase.pros}
-                                onChange={(e) => handlePhaseChange(i, 'pros', e.target.value)}
-                                placeholder="✓ E.g., referral was accepted instantly, interviewer was highly engaged with our C++ kernel reduction designs..."
-                                className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
-                              />
-                            </div>
-
-                            {/* Red Flags / Risk Areas - Left Red Border */}
-                            <div className="bg-rose-500/[0.02] border border-rose-500/10 border-l-4 border-l-rose-500 rounded-2xl p-4.5 space-y-2">
-                              <label className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <ThumbsDown className="w-3.5 h-3.5" />
-                                Risk Areas / Red Flags
-                              </label>
-                              <textarea
-                                rows={3}
-                                value={phase.cons}
-                                onChange={(e) => handlePhaseChange(i, 'cons', e.target.value)}
-                                placeholder="⚠ E.g., timezone mismatch, salary ceiling concerns, whiteboard requirements detected..."
-                                className="text-xs bg-transparent border-none p-0 w-full text-slate-200 outline-none focus:ring-0 placeholder-slate-600 leading-relaxed resize-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Remarks & Quotes feedback section */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Remarks, Stack & Notes</label>
-                              <textarea
-                                rows={3}
-                                value={phase.remarks}
-                                onChange={(e) => handlePhaseChange(i, 'remarks', e.target.value)}
-                                placeholder="Instructions, interviewer name, and specific challenges or homework parameters..."
-                                className="text-xs bg-slate-950 border border-slate-900 p-3 rounded-2xl w-full text-slate-200 transition placeholder-slate-700 outline-none focus:border-indigo-500 leading-relaxed"
-                              />
-                            </div>
-
-                            {/* Direct Quotes block (interviewer feedback) */}
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Direct Interviewer Quotes</label>
-                              <div className="relative bg-slate-950/60 p-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/20">
-                                <div className="absolute top-2.5 right-3 text-indigo-500/10 font-serif text-4xl select-none leading-none">“</div>
-                                <textarea
-                                  rows={3}
-                                  value={phase.feedback}
-                                  onChange={(e) => handlePhaseChange(i, 'feedback', e.target.value)}
-                                  placeholder="Paste direct quotes from emails, phone calls, or recruiter summaries..."
-                                  className="text-xs bg-transparent border-none p-0 w-full text-slate-100 outline-none focus:ring-0 placeholder-indigo-950 leading-relaxed italic pr-6"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
-                  </div>
-                );
-              })}
-              </div>
-            </TabsContent>
-
-            {/* TAB 2: CORE DETAILS & LOGISTICS */}
-            <TabsContent value="core" className="outline-none space-y-6 mt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Employment card */}
-                <div className="glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-4 lg:col-span-2">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    Employment & Position Logistics
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Target Compensation</label>
-                      <input
-                        type="text"
-                        value={editedApp.salaryRange}
-                        onChange={(e) => handleFieldChange('salaryRange', e.target.value)}
-                        placeholder="e.g., $190k - $240k"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-black text-slate-100"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Benefits, ESPP, Equity</label>
-                      <input
-                        type="text"
-                        value={editedApp.otherBenefits}
-                        onChange={(e) => handleFieldChange('otherBenefits', e.target.value)}
-                        placeholder="e.g., 15% Bonus, ESPP, Premium Health"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full text-slate-300 font-medium"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Working Model</label>
-                      <select
-                        value={editedApp.workModel}
-                        onChange={(e) => handleFieldChange('workModel', e.target.value as WorkModelType)}
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-semibold text-slate-300 cursor-pointer"
-                      >
-                        <option value="Remote">Remote</option>
-                        <option value="Hybrid">Hybrid</option>
-                        <option value="Onsite">Onsite</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Location Details</label>
-                      <input
-                        type="text"
-                        value={editedApp.location}
-                        onChange={(e) => handleFieldChange('location', e.target.value)}
-                        placeholder="City, State"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-semibold text-slate-100"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Logistics & HR card */}
-                <div className="glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-4 lg:col-span-1">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    Channels & Points of Contact
-                  </h4>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">HR Recruiter Contact</label>
-                      <input
-                        type="text"
-                        value={editedApp.hrContact}
-                        onChange={(e) => handleFieldChange('hrContact', e.target.value)}
-                        placeholder="Name, Email, or phone"
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-bold text-slate-100"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Applied Via Channel</label>
-                      <select
-                        value={editedApp.appliedVia}
-                        onChange={(e) => handleFieldChange('appliedVia', e.target.value as AppliedViaType)}
-                        className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full font-bold text-slate-300 cursor-pointer"
-                      >
-                        <option value="LinkedIn">LinkedIn</option>
-                        <option value="Email">Email</option>
-                        <option value="Company Form">Company Form</option>
-                        <option value="Referral">Referral</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Anchor Assets links */}
-                <div className="glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-4 lg:col-span-1">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5">
-                    Cockpit Document Anchors
-                  </h4>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Applied Resume Version</label>
-                      <div className="flex gap-2 mb-2">
-                        <input
-                          type="url"
-                          value={editedApp.resumeLink}
-                          onChange={(e) => handleFieldChange('resumeLink', e.target.value)}
-                          placeholder="e.g. Drive PDF Link"
-                          className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full text-slate-300 font-mono"
-                        />
-                        {editedApp.resumeLink && (
-                          <a 
-                            href={editedApp.resumeLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-250 dark:border-indigo-900/30 transition-all cursor-pointer"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
-                      <GDriveResumeUploader 
-                        onUploadSuccess={(url) => handleFieldChange('resumeLink', url)}
-                        currentLink={editedApp.resumeLink}
-                        id="slide-over"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Target Portfolio / Spec Repo</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="url"
-                          value={editedApp.portfolioLink}
-                          onChange={(e) => handleFieldChange('portfolioLink', e.target.value)}
-                          placeholder="e.g. GitHub spec commit"
-                          className="text-xs bg-slate-950 border border-slate-900 p-2.5 rounded-xl w-full text-slate-300 font-mono"
-                        />
-                        {editedApp.portfolioLink && (
-                          <a 
-                            href={editedApp.portfolioLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 border border-indigo-250 dark:border-indigo-900/30 transition-all cursor-pointer"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Key JD Requirements */}
-                <div className="lg:col-span-2 glass-panel p-6 rounded-[2rem] border border-slate-800 shadow-sm space-y-3">
-                  <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-900 pb-2.5">
-                    Target Role Requirements Spec & Keywords
-                  </h4>
-                  <textarea
-                    rows={4}
-                    value={editedApp.keyJdRequirements}
-                    onChange={(e) => handleFieldChange('keyJdRequirements', e.target.value)}
-                    placeholder="Paste keywords, core architectures, standards, or profiles demanded by the company..."
-                    className="text-xs bg-slate-950 border border-slate-900 p-3.5 rounded-2xl w-full leading-relaxed focus:bg-slate-950 text-slate-200 outline-none focus:border-indigo-500 resize-y"
+              return (
+                <div key={i} className="relative pl-8 pb-3 last:pb-0">
+                  {/* thread */}
+                  {i < phases.length - 1 && (
+                    <div className={`absolute left-[7px] top-5 bottom-0 w-px ${isCompleted ? 'bg-emerald-500/40' : 'bg-slate-800'}`} />
+                  )}
+                  {/* node dot */}
+                  <div
+                    onClick={() => handlePhaseChange(i, 'status', STATUS_CYCLE[(STATUS_CYCLE.indexOf(phase.status) + 1) % STATUS_CYCLE.length])}
+                    title="Click to change stage status"
+                    className={`absolute left-0 top-1 w-[15px] h-[15px] rounded-full cursor-pointer transition ${
+                      isCompleted ? 'bg-emerald-500' :
+                      isActive ? 'bg-indigo-500 ring-4 ring-indigo-500/15' :
+                      isSkipped ? 'bg-slate-700' :
+                      'bg-slate-800 border border-slate-700'
+                    }`}
                   />
-                </div>
-              </div>
-            </TabsContent>
 
-            {/* TAB 3: POST-MORTEM & TECHNICAL TELEMETRY */}
-            <TabsContent value="mortem" className="outline-none space-y-6 mt-0">
-              <div className="bg-slate-950 border border-slate-900 text-slate-100 p-6 rounded-[2rem] space-y-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                  <Award className="w-40 h-40 text-indigo-500" />
-                </div>
-
-                <div className="border-b border-slate-900 pb-4">
-                  <h3 className="text-lg font-black flex items-center gap-2 text-slate-100">
-                    <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    Calibration Post-Mortem & Skill Gaps
-                  </h3>
-                  <p className="text-slate-400 text-xs mt-1">
-                    Continuous feedback cycles logged post-technical challenge or whiteboard loop. Refine specific systems gaps.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Action Gaps */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <div>
-                      <label className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest block mb-2">
-                        Skill Debt & Gaps Logged
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={editedApp.postMortem.skillsImprovements}
-                        onChange={(e) => handlePostMortemChange('skillsImprovements', e.target.value)}
-                        placeholder="E.g., review warp divergent branch penalty layouts, optimize shared memory bank conflicts..."
-                        className="text-xs bg-slate-950 border border-slate-900 p-3.5 rounded-2xl w-full text-slate-100 focus:bg-slate-900/50 outline-none focus:border-indigo-500 leading-relaxed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2">
-                        Continuous Preparation Notes
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={editedApp.postMortem.preparationNotes}
-                        onChange={(e) => handlePostMortemChange('preparationNotes', e.target.value)}
-                        placeholder="E.g., review system design patterns, practice coding challenges, study domain-specific concepts..."
-                        className="text-xs bg-slate-950 border border-slate-900 p-3.5 rounded-2xl w-full text-slate-100 focus:bg-slate-900/50 outline-none focus:border-indigo-500 leading-relaxed"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Calibration rating & interactive prep resources */}
-                  <div className="lg:col-span-1 space-y-6">
-                    {/* Dynamic Self Rating */}
-                    <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-900 space-y-3.5">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Process Score
-                        </label>
-                        <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                          {editedApp.postMortem.selfRating} / 10
-                        </span>
+                  {/* node header row */}
+                  <div
+                    onClick={() => togglePhase(i)}
+                    className={`flex items-center justify-between gap-2 cursor-pointer rounded-lg px-2.5 py-2 -mx-1 transition ${
+                      isActive ? 'bg-indigo-500/[0.06]' : 'hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className={`text-sm font-bold truncate ${isActive ? 'text-indigo-600 dark:text-indigo-300' : isCompleted ? 'text-slate-200' : 'text-slate-400'}`}>
+                        {cleanPhaseName(phase.name)}
                       </div>
-                      
-                      <div className="space-y-2">
-                        <input
-                          type="range"
-                          min="0"
-                          max="10"
-                          step="0.5"
-                          value={editedApp.postMortem.selfRating}
-                          onChange={(e) => handlePostMortemChange('selfRating', parseFloat(e.target.value))}
-                          className="w-full accent-indigo-500 cursor-pointer"
-                        />
-                        <div className="flex justify-between gap-1 items-center">
-                          <span className="text-[9px] text-slate-500 font-mono uppercase">Standard</span>
-                          <div className="flex gap-0.5">
-                            {[...Array(5)].map((_, index) => {
-                              const starRating = (index + 1) * 2;
-                              return (
-                                <Star 
-                                  key={index}
-                                  className={`w-3.5 h-3.5 ${
-                                    editedApp.postMortem.selfRating >= starRating 
-                                      ? 'text-amber-400 fill-amber-400' 
-                                      : editedApp.postMortem.selfRating >= starRating - 1 
-                                        ? 'text-amber-400/70 fill-amber-400/30' 
-                                        : 'text-slate-800'
-                                  }`}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Key JD Requirements */}
-                    <div className="space-y-2.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                        Key JD Requirements
-                      </label>
-                      <div className="p-3 bg-slate-950 border border-slate-900 rounded-xl">
-                        {editedApp.keyJdRequirements?.trim() ? (
-                          <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                            {editedApp.keyJdRequirements}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-slate-500 italic">No requirements noted.</p>
+                      <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 mt-0.5">
+                        <span>{phase.date ? fmtDate(phase.date) : 'no date'}</span>
+                        {gap && <><span className="text-slate-700">·</span><span className={isActive && stalled ? 'text-amber-500' : ''}>{gap}</span></>}
+                        {!expanded && (phase.pros || phase.cons || phase.feedback) && (
+                          <span className="flex items-center gap-1 ml-0.5">
+                            {phase.pros && <ThumbsUp className="w-3 h-3 text-emerald-500" />}
+                            {phase.cons && <ThumbsDown className="w-3 h-3 text-rose-500" />}
+                            {phase.feedback && <Quote className="w-3 h-3 text-indigo-400" />}
+                          </span>
                         )}
                       </div>
                     </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                   </div>
+
+                  {/* expanded journal entry */}
+                  {expanded && (
+                    <div className="mt-2.5 ml-1 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                      {/* date + status */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1.5 bg-slate-950/50 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                          <input
+                            type="date"
+                            value={phase.date}
+                            onChange={e => handlePhaseChange(i, 'date', e.target.value)}
+                            className="text-xs bg-transparent outline-none text-slate-300 font-medium w-[110px]"
+                          />
+                        </div>
+                        <div className="flex gap-0.5 bg-slate-950/50 p-0.5 rounded-lg border border-slate-800">
+                          {STATUS_CYCLE.map(st => (
+                            <button
+                              key={st}
+                              onClick={() => handlePhaseChange(i, 'status', st)}
+                              className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wide rounded-md transition ${
+                                phase.status === st
+                                  ? st === 'completed' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                  : st === 'active' ? 'bg-indigo-600 text-white'
+                                  : 'bg-slate-700 text-slate-200'
+                                  : 'text-slate-500 hover:text-slate-300'
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Field label="What happened">
+                        <textarea
+                          rows={2}
+                          value={phase.remarks}
+                          onChange={e => handlePhaseChange(i, 'remarks', e.target.value)}
+                          placeholder="Interviewer, format, topics, homework…"
+                          className={`${inputCls} resize-none leading-relaxed`}
+                        />
+                      </Field>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <label className="block space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> Good</span>
+                          <textarea rows={2} value={phase.pros} onChange={e => handlePhaseChange(i, 'pros', e.target.value)} placeholder="What went well" className={`${inputCls} resize-none leading-relaxed`} />
+                        </label>
+                        <label className="block space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1"><ThumbsDown className="w-3 h-3" /> Risk</span>
+                          <textarea rows={2} value={phase.cons} onChange={e => handlePhaseChange(i, 'cons', e.target.value)} placeholder="Concerns / gaps" className={`${inputCls} resize-none leading-relaxed`} />
+                        </label>
+                      </div>
+
+                      <label className="block space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><Quote className="w-3 h-3" /> Their words</span>
+                        <textarea rows={2} value={phase.feedback} onChange={e => handlePhaseChange(i, 'feedback', e.target.value)} placeholder="Direct quotes from the recruiter / interviewer" className={`${inputCls} resize-none leading-relaxed italic`} />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* DETAILS */}
+          <div className="mt-6">
+            <Section icon={Briefcase} title="Details" hint={`${editedApp.workModel} · ${editedApp.location}`} open={openSections.details} onToggle={() => toggleSection('details')}>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Compensation">
+                  <input value={editedApp.salaryRange} onChange={e => handleFieldChange('salaryRange', e.target.value)} placeholder="$120k – $150k" className={inputCls} />
+                </Field>
+                <Field label="Benefits / Equity">
+                  <input value={editedApp.otherBenefits} onChange={e => handleFieldChange('otherBenefits', e.target.value)} placeholder="Bonus, equity, health" className={inputCls} />
+                </Field>
+                <Field label="Work model">
+                  <select value={editedApp.workModel} onChange={e => handleFieldChange('workModel', e.target.value as WorkModelType)} className={`${inputCls} cursor-pointer`}>
+                    <option value="Remote">Remote</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Onsite">Onsite</option>
+                  </select>
+                </Field>
+                <Field label="Location">
+                  <input value={editedApp.location} onChange={e => handleFieldChange('location', e.target.value)} placeholder="City, Country" className={inputCls} />
+                </Field>
+              </div>
+              <Field label="Job description / keywords">
+                <textarea rows={3} value={editedApp.keyJdRequirements} onChange={e => handleFieldChange('keyJdRequirements', e.target.value)} placeholder="Stack, requirements, keywords…" className={`${inputCls} resize-y leading-relaxed`} />
+              </Field>
+            </Section>
+
+            {/* CONTACTS & LINKS */}
+            <Section icon={Users} title="Contacts & Links" hint={editedApp.hrContact || undefined} open={openSections.contacts} onToggle={() => toggleSection('contacts')}>
+              <Field label="Recruiter / contact">
+                <input value={editedApp.hrContact} onChange={e => handleFieldChange('hrContact', e.target.value)} placeholder="Name · email · LinkedIn" className={inputCls} />
+              </Field>
+              <Field label="Applied via">
+                <select value={editedApp.appliedVia} onChange={e => handleFieldChange('appliedVia', e.target.value as AppliedViaType)} className={`${inputCls} cursor-pointer`}>
+                  <option value="LinkedIn">LinkedIn</option>
+                  <option value="Email">Email</option>
+                  <option value="Company Form">Company Form</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Resume sent">
+                <div className="flex gap-1.5">
+                  <input value={editedApp.resumeLink} onChange={e => handleFieldChange('resumeLink', e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                  {editedApp.resumeLink && (
+                    <a href={editedApp.resumeLink} target="_blank" rel="noopener noreferrer" className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 transition" aria-label="Open resume">
+                      <Link2 className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              </Field>
+              <Field label="Portfolio / repo">
+                <div className="flex gap-1.5">
+                  <input value={editedApp.portfolioLink} onChange={e => handleFieldChange('portfolioLink', e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                  {editedApp.portfolioLink && (
+                    <a href={editedApp.portfolioLink} target="_blank" rel="noopener noreferrer" className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 transition" aria-label="Open portfolio">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              </Field>
+            </Section>
+
+            {/* RETRO */}
+            <Section icon={Award} title="Retro & Learnings" open={openSections.retro} onToggle={() => toggleSection('retro')}>
+              <Field label="Skill gaps to close">
+                <textarea rows={2} value={editedApp.postMortem.skillsImprovements} onChange={e => handlePostMortemChange('skillsImprovements', e.target.value)} placeholder="What to study / practice before the next round" className={`${inputCls} resize-none leading-relaxed`} />
+              </Field>
+              <Field label="Prep notes">
+                <textarea rows={2} value={editedApp.postMortem.preparationNotes} onChange={e => handlePostMortemChange('preparationNotes', e.target.value)} placeholder="How to prepare next time" className={`${inputCls} resize-none leading-relaxed`} />
+              </Field>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Self rating</span>
+                  <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">{editedApp.postMortem.selfRating}/10</span>
+                </div>
+                <input type="range" min={0} max={10} step={0.5} value={editedApp.postMortem.selfRating} onChange={e => handlePostMortemChange('selfRating', parseFloat(e.target.value))} className="w-full accent-indigo-500 cursor-pointer" />
+                <div className="flex gap-0.5 justify-end">
+                  {[...Array(5)].map((_, idx) => {
+                    const r = (idx + 1) * 2;
+                    return <Star key={idx} className={`w-3.5 h-3.5 ${editedApp.postMortem.selfRating >= r ? 'text-amber-400 fill-amber-400' : editedApp.postMortem.selfRating >= r - 1 ? 'text-amber-400/60 fill-amber-400/20' : 'text-slate-700'}`} />;
+                  })}
                 </div>
               </div>
-            </TabsContent>
+            </Section>
           </div>
-        </Tabs>
-
-        {/* Footer sticky bar */}
-        <div className="bg-slate-950 border-t border-slate-900/80 p-4 flex justify-end gap-3 px-8 shrink-0">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-100 hover:bg-slate-850 rounded-xl transition-all h-auto cursor-pointer"
-          >
-            Close Mission Control
-          </Button>
-          <Button
-            onClick={handleSave}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all shadow-sm h-auto cursor-pointer ${
-              isSaved 
-                ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow'
-            }`}
-          >
-            <Save className="w-4 h-4" />
-            {isSaved ? 'Changes Synced!' : 'Sync Cockpit Changes'}
-          </Button>
         </div>
+      </div>
+    </>
+  );
+
+  // Desktop: inline detail pane filling its shell column.
+  if (asPane) {
+    return (
+      <div className="flex flex-col h-full w-full bg-slate-950 border-l border-slate-800 overflow-hidden">
+        {body}
+      </div>
+    );
+  }
+
+  // Mobile / narrow: overlay sheet.
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className="sm:max-w-xl h-[90dvh] max-h-[90dvh] flex flex-col p-0 overflow-hidden bg-slate-950 border border-slate-800 rounded-2xl focus:outline-none"
+        showCloseButton={false}
+      >
+        {body}
       </DialogContent>
     </Dialog>
   );
