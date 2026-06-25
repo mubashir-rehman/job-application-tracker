@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { JobApplication, WorkModelType, AppliedViaType } from '../types';
 import { createDefaultPhases } from '../data';
+import { deriveCurrentStatus } from '../lib/appUtils';
 import { X, Layers, Briefcase, FileText, Check } from 'lucide-react';
 import GDriveResumeUploader from './GDriveResumeUploader';
 
@@ -54,8 +55,8 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
       resumeLink: resumeLink.trim(),
       portfolioLink: portfolioLink.trim(),
       keyJdRequirements: keyJdRequirements.trim(),
-      currentStatus: 'Application Submitted',
       phases: createDefaultPhases(),
+      currentStatus: deriveCurrentStatus(createDefaultPhases()),
       postMortem: {
         skillsImprovements: '',
         preparationNotes: '',
@@ -128,7 +129,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                     id="new-company-name"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Google, NVIDIA"
+                    placeholder="e.g. Acme Corp, CloudNova Inc"
                     className={`text-xs bg-slate-950 border p-2.5 rounded-xl w-full outline-none focus:bg-slate-950 text-white focus:ring-2 transition ${
                       errors.companyName ? 'border-rose-500 focus:ring-rose-500/10' : 'border-slate-800 focus:ring-indigo-500/15 focus:border-indigo-500'
                     }`}

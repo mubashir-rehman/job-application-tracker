@@ -3,6 +3,7 @@ import { JobApplication, WorkModelType } from '../types';
 import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase, CalendarCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { extractTechTags, parseSalaryMidpoint } from '../lib/appUtils';
 
 interface ApplicationTableProps {
   applications: JobApplication[];
@@ -53,7 +54,11 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
     } else if (sortBy === 'role') {
       result.sort((a, b) => a.targetRole.localeCompare(b.targetRole));
     } else if (sortBy === 'salary') {
-      result.sort((a, b) => b.salaryRange.localeCompare(a.salaryRange));
+      result.sort((a, b) => {
+        const aMid = parseSalaryMidpoint(a.salaryRange) ?? 0;
+        const bMid = parseSalaryMidpoint(b.salaryRange) ?? 0;
+        return bMid - aMid;
+      });
     } else if (sortBy === 'recent') {
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
@@ -77,26 +82,10 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
     return colors[hash % colors.length];
   };
 
-  // Get tech tags from applications
+  // Get tech tags from JD requirements using shared utility
   const getTechTags = (app: JobApplication) => {
-    if (app.companyName.toLowerCase().includes('nvidia')) {
-      return ['CUDA', 'HPC', 'C++20'];
-    }
-    if (app.companyName.toLowerCase().includes('stripe')) {
-      return ['Distributed Systems', 'APIs', 'Go'];
-    }
-    if (app.companyName.toLowerCase().includes('airbnb')) {
-      return ['React', 'Vite', 'Core Web Vitals'];
-    }
-    
-    // Dynamic fallback
-    const words = ['python', 'rust', 'go', 'typescript', 'react', 'node', 'aws', 'docker', 'kubernetes', 'c++', 'java', 'sql', 'system design'];
-    const jdLower = app.keyJdRequirements.toLowerCase();
-    const matched = words.filter(word => jdLower.includes(word)).slice(0, 3);
-    if (matched.length > 0) {
-      return matched.map(w => w.toUpperCase());
-    }
-    return ['SOFTWARE', 'SYSTEMS'];
+    const tags = extractTechTags(app.keyJdRequirements);
+    return tags.length > 0 ? tags : ['Software', 'Engineering'];
   };
 
   // Helper to color statuses - Observer UI Colors

@@ -1,6 +1,7 @@
 import { JobApplication } from '../types';
 import { Briefcase, Calendar, Award, Banknote } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { isOfferReceived, parseSalaryMidpoint } from '../lib/appUtils';
 
 interface StatsGridProps {
   applications: JobApplication[];
@@ -16,30 +17,21 @@ export function StatsGrid({ applications }: StatsGridProps) {
   }).length;
 
   // Calculate offers
-  const offersCount = applications.filter(app => {
-    const status = app.currentStatus.toLowerCase();
-    return status.includes('offer') || app.phases[6].status === 'completed';
-  }).length;
+  const offersCount = applications.filter(app => isOfferReceived(app)).length;
 
   // Calculate average mid-point salary
   const calculateAverageSalary = () => {
     if (total === 0) return '$0k';
-    let sum = 0;
-    let validCount = 0;
-    
-    applications.forEach(app => {
-      // Parse salary range like "$190k - $240k"
-      const matches = app.salaryRange.match(/\d+/g);
-      if (matches && matches.length > 0) {
-        const numbers = matches.map(Number);
-        const mid = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-        sum += mid;
-        validCount++;
-      }
-    });
 
-    if (validCount === 0) return 'N/A';
-    return `$${Math.round(sum / validCount)}k`;
+    const midpoints = applications
+      .map(app => parseSalaryMidpoint(app.salaryRange))
+      .filter((v): v is number => v !== null);
+
+    if (midpoints.length === 0) return 'N/A';
+    const avg = midpoints.reduce((a, b) => a + b, 0) / midpoints.length;
+    // Values are already in full dollars when hasK flag normalized them; convert to k display
+    const avgK = avg >= 1000 ? Math.round(avg / 1000) : Math.round(avg);
+    return avg >= 1000 ? `$${avgK}k` : `$${avgK}`;
   };
 
   const avgSalary = calculateAverageSalary();

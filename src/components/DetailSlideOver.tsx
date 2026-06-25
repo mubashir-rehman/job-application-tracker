@@ -1,26 +1,19 @@
 import { useState, useEffect } from 'react';
 import { JobApplication, InterviewPhase, WorkModelType, AppliedViaType } from '../types';
-import { 
-  X, 
-  Calendar, 
-  ExternalLink, 
-  Award, 
-  CheckCircle2, 
-  Circle, 
-  Star, 
-  Save, 
-  Database, 
-  Info, 
-  Layers, 
-  ListChecks, 
-  Clock, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Flame, 
-  BookOpen, 
-  ArrowRight,
-  TrendingUp,
-  Play,
+import { deriveCurrentStatus } from '../lib/appUtils';
+import {
+  X,
+  Calendar,
+  ExternalLink,
+  Award,
+  Star,
+  Save,
+  Database,
+  Info,
+  Layers,
+  ListChecks,
+  ThumbsUp,
+  ThumbsDown,
   ChevronDown,
   ChevronUp,
   FileText
@@ -94,21 +87,19 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     if (!editedApp) return;
     const updatedPhases = [...editedApp.phases];
     updatedPhases[index] = { ...updatedPhases[index], [key]: value };
-    
-    // Auto-compute current status based on the highest active or completed phase
-    let computedStatus = editedApp.currentStatus;
+
+    // Always recompute currentStatus from phases after any phase field change
+    const computedStatus = deriveCurrentStatus(updatedPhases);
+
     if (key === 'status') {
-      if (value === 'completed' || value === 'active') {
-        computedStatus = updatedPhases[index].name.replace(/^Phase \d+:\s*/, '');
-      }
       setExpandedPhases(prev => ({
         ...prev,
         [index]: true
       }));
     }
 
-    const updated = { 
-      ...editedApp, 
+    const updated = {
+      ...editedApp,
       phases: updatedPhases,
       currentStatus: computedStatus
     };
@@ -148,32 +139,6 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     const diff = Date.now() - new Date(editedApp.createdAt).getTime();
     return Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
   };
-
-  // Static preparation resources generated dynamically based on company context
-  const getInteractiveResources = () => {
-    const name = editedApp.companyName.toLowerCase();
-    if (name.includes('nvidia')) {
-      return [
-        { title: 'CUDA C Programming Guide', type: 'guide', link: 'https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html' },
-        { title: 'NVIDIA GTC Architecture Core Talks', type: 'video', link: 'https://www.nvidia.com/en-us/gtc/' },
-        { title: 'Parallel Reduction & Warp Divergence Optimization', type: 'primer', link: 'https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf' },
-      ];
-    }
-    if (name.includes('stripe')) {
-      return [
-        { title: 'Stripe API Design Guidelines', type: 'guide', link: 'https://github.com/stripe/api-standards' },
-        { title: 'Distributed Systems & Consensuses (Raft)', type: 'primer', link: 'https://raft.github.io/' },
-        { title: 'System Design Interview: Idempotent FinTech Ledgers', type: 'guide', link: 'https://bytebytego.com' },
-      ];
-    }
-    return [
-      { title: 'System Design Primer', type: 'guide', link: 'https://github.com/donnemartin/system-design-primer' },
-      { title: 'Front-End System Design Playbook', type: 'primer', link: 'https://github.com/ctripcorp/fe-syse' },
-      { title: 'WAI-ARIA Accessibility Design Patterns', type: 'guide', link: 'https://www.w3.org/WAI/ARIA/apg/' },
-    ];
-  };
-
-  const resources = getInteractiveResources();
 
   // Helper values for active step indicator
   const completedPhasesCount = editedApp.phases.filter(p => p.status === 'completed').length;
@@ -704,7 +669,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                         rows={4}
                         value={editedApp.postMortem.preparationNotes}
                         onChange={(e) => handlePostMortemChange('preparationNotes', e.target.value)}
-                        placeholder="E.g., work through 5 specific CUDA kernel reduction benchmarks from Nvidia code sample repo..."
+                        placeholder="E.g., review system design patterns, practice coding challenges, study domain-specific concepts..."
                         className="text-xs bg-slate-950 border border-slate-900 p-3.5 rounded-2xl w-full text-slate-100 focus:bg-slate-900/50 outline-none focus:border-indigo-500 leading-relaxed"
                       />
                     </div>
@@ -756,33 +721,19 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                       </div>
                     </div>
 
-                    {/* Highly clickable Preparation Resources (Cockpit style!) */}
+                    {/* Key JD Requirements */}
                     <div className="space-y-2.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                        Target Resource Checklist
+                        Key JD Requirements
                       </label>
-                      <div className="space-y-2">
-                        {resources.map((res, rid) => (
-                          <a
-                            key={rid}
-                            href={res.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 bg-slate-950 hover:bg-slate-900 border border-slate-900 hover:border-indigo-500/20 rounded-xl text-xs text-slate-300 font-bold transition group"
-                          >
-                            <span className="flex items-center gap-2 truncate">
-                              {res.type === 'guide' ? (
-                                <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                              ) : res.type === 'video' ? (
-                                <Play className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                              ) : (
-                                <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                              )}
-                              <span className="truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{res.title}</span>
-                            </span>
-                            <ExternalLink className="w-3 h-3 text-slate-600 shrink-0 group-hover:text-slate-400 transition" />
-                          </a>
-                        ))}
+                      <div className="p-3 bg-slate-950 border border-slate-900 rounded-xl">
+                        {editedApp.keyJdRequirements?.trim() ? (
+                          <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                            {editedApp.keyJdRequirements}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-500 italic">No requirements noted.</p>
+                        )}
                       </div>
                     </div>
                   </div>
