@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { JobApplication, WorkModelType } from '../types';
-import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase, CalendarCheck } from 'lucide-react';
+import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { extractTechTags, parseSalaryMidpoint } from '../lib/appUtils';
+import { statusColor } from '../lib/statusStyles';
+import { CompanyAvatar } from './common/CompanyAvatar';
 
 interface ApplicationTableProps {
   applications: JobApplication[];
@@ -68,38 +70,10 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
     return result;
   }, [applications, searchTerm, workModelFilter, statusFilter, sortBy]);
 
-  // Generate color styles for company placeholder initials
-  const getCompanyLogoStyles = (name: string) => {
-    const clean = name.trim().toUpperCase();
-    const hash = clean.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const colors = [
-      { bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
-      { bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-      { bg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-      { bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-      { bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-      { bg: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20' },
-      { bg: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
-    ];
-    return colors[hash % colors.length];
-  };
-
   // Get tech tags from JD requirements using shared utility
   const getTechTags = (app: JobApplication) => {
     const tags = extractTechTags(app.keyJdRequirements);
     return tags.length > 0 ? tags : ['Software', 'Engineering'];
-  };
-
-  // Helper to color statuses - Observer UI Colors
-  const getStatusStyles = (status: string) => {
-    const s = status.toLowerCase();
-    if (s.includes('offer')) return { text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
-    if (s.includes('reject') || s.includes('fail') || s.includes('archive')) return { text: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' };
-    if (s.includes('tech') || s.includes('final')) return { text: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' };
-    if (s.includes('negotiation') || s.includes('hr')) return { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' };
-    if (s.includes('screening') || s.includes('prescreen')) return { text: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' };
-    if (s.includes('submitted')) return { text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/20' };
-    return { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' };
   };
 
   return (
@@ -209,9 +183,8 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                     const totalPhases = app.phases.length;
                     const progressPercent = Math.round((completedPhases / totalPhases) * 100);
                     
-                    const logoStyles = getCompanyLogoStyles(app.companyName);
                     const techTags = getTechTags(app);
-                    const statusInfo = getStatusStyles(app.currentStatus);
+                    const statusInfo = statusColor(app.currentStatus);
 
                     return (
                       <tr
@@ -223,10 +196,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                         {/* Company & Role with Logo Column */}
                         <td className="px-6 py-5.5">
                           <div className="flex items-center gap-3.5">
-                            {/* Company Logo circle placeholder */}
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black font-display text-sm border shrink-0 ${logoStyles.bg}`}>
-                              {app.companyName.trim().charAt(0)}
-                            </div>
+                            <CompanyAvatar name={app.companyName} className="w-10 h-10 text-sm" />
                             <div className="min-w-0">
                               <div className="font-extrabold text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
                                 {app.companyName}
@@ -347,8 +317,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                   const completedPhases = app.phases.filter(p => p.status === 'completed').length;
                   const totalPhases = app.phases.length;
                   const progressPercent = Math.round((completedPhases / totalPhases) * 100);
-                  const logoStyles = getCompanyLogoStyles(app.companyName);
-                  const statusInfo = getStatusStyles(app.currentStatus);
+                  const statusInfo = statusColor(app.currentStatus);
 
                   return (
                     <div
@@ -359,9 +328,7 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black font-display text-xs border ${logoStyles.bg}`}>
-                            {app.companyName.charAt(0)}
-                          </div>
+                          <CompanyAvatar name={app.companyName} className="w-9 h-9 text-xs" />
                           <div>
                             <h4 className="font-extrabold text-slate-100 text-sm leading-tight">{app.companyName}</h4>
                             <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">{app.targetRole}</p>

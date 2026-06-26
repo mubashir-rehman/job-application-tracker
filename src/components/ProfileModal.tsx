@@ -1,19 +1,7 @@
-import React, { useState } from 'react';
-import { 
-  X, 
-  User, 
-  Mail, 
-  Calendar, 
-  Database, 
-  ShieldAlert, 
-  LogOut, 
-  Trash2, 
-  Clock, 
-  Info,
-  CheckCircle2,
-  AlertTriangle
-} from 'lucide-react';
+import { useState } from 'react';
+import { User, Mail, Calendar, Database, ShieldAlert, LogOut, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { Modal, ModalHeader } from './common/Modal';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -86,31 +74,20 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm transition-opacity"
-      id="profile-modal"
-    >
-      <div 
-        className="bg-slate-900 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col relative"
-        onClick={(e) => e.stopPropagation()}
+    <Modal open={isOpen && !!user} onClose={onClose}>
+      <div
+        className="relative bg-slate-900 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-800 flex flex-col"
+        id="profile-modal"
       >
-        {/* Header */}
-        <div className="p-6 border-b border-slate-800/80 flex justify-between items-center bg-slate-900 z-10">
-          <div>
-            <h2 className="text-xl font-black font-display text-slate-100 tracking-tight flex items-center gap-2">
-              <User className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-              <span>Developer Profile</span>
-            </h2>
-            <p className="text-slate-400 text-xs mt-0.5 font-medium">Manage your synchronized cloud account</p>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="p-1.5 hover:bg-slate-800/50 text-slate-400 hover:text-slate-100 rounded-lg transition"
-            aria-label="Close Profile"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <ModalHeader
+          title="Developer Profile"
+          subtitle="Manage your synchronized cloud account"
+          icon={User}
+          titleClassName="text-xl"
+          className="p-6"
+          onClose={onClose}
+          closeLabel="Close Profile"
+        />
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[75vh] space-y-6">
@@ -253,6 +230,6 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

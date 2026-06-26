@@ -10,7 +10,8 @@ import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, Eye
 import { isSupabaseConfigured } from './supabaseClient';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
-import { SettingsModal, hasAnyApiKey } from './components/SettingsModal';
+import { SettingsModal } from './components/SettingsModal';
+import { hasAnyApiKey } from './lib/apiKeys';
 import { AppShell } from './components/shell/AppShell';
 import { ViewKey } from './components/shell/Sidebar';
 import { CommandPalette, CommandAction } from './components/shell/CommandPalette';
@@ -19,6 +20,7 @@ import { useTheme } from './hooks/useTheme';
 import { useAuth } from './hooks/useAuth';
 import { useApplications } from './hooks/useApplications';
 import { useMediaQuery } from './hooks/usePlatform';
+import { useEscapeKey } from './hooks/useEscapeKey';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -48,12 +50,7 @@ export default function App() {
   }, [showTelemetry]);
 
   // Escape key dismisses delete confirmation
-  useEffect(() => {
-    if (!appToDelete) return;
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setAppToDelete(null); };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [appToDelete]);
+  useEscapeKey(!!appToDelete, () => setAppToDelete(null));
 
   // ⌘K / Ctrl+K opens the command palette
   useEffect(() => {

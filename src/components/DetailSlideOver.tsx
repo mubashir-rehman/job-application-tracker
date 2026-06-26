@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { JobApplication, InterviewPhase, WorkModelType, AppliedViaType } from '../types';
+import { JobApplication, InterviewPhase } from '../types';
 import { deriveCurrentStatus } from '../lib/appUtils';
+import { statusTone, WORK_MODELS, APPLIED_VIA } from '../lib/statusStyles';
+import { Field, OptionSelect, fieldInput } from './common/Field';
+import { CompanyAvatar } from './common/CompanyAvatar';
 import {
-  X, Save, ArrowRight, GitBranch, MessageSquare, ThumbsUp, ThumbsDown,
+  X, Save, ArrowRight, GitBranch, ThumbsUp, ThumbsDown,
   Quote, Clock, ChevronDown, Calendar, Link2, ExternalLink, Users,
   Award, Star, Briefcase,
 } from 'lucide-react';
@@ -34,17 +37,6 @@ const daysSince = (a: string) => {
 };
 
 const STATUS_CYCLE: InterviewPhase['status'][] = ['upcoming', 'active', 'completed', 'skipped'];
-
-// Module-level so they keep a stable identity across renders (otherwise the
-// inputs they wrap would remount and lose focus on every keystroke).
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      {children}
-    </label>
-  );
-}
 
 function Section({ icon: Icon, title, hint, open, onToggle, children }: {
   icon: any; title: string; hint?: string; open: boolean; onToggle: () => void; children: React.ReactNode;
@@ -146,17 +138,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
     return editedApp.createdAt;
   };
 
-  const statusTone = (s: string) => {
-    const t = s.toLowerCase();
-    if (t.includes('offer')) return 'text-emerald-500';
-    if (t.includes('reject') || t.includes('archived') || t.includes('fail')) return 'text-rose-500';
-    return 'text-indigo-500 dark:text-indigo-400';
-  };
-
   const toggleSection = (id: keyof typeof openSections) =>
     setOpenSections(p => ({ ...p, [id]: !p[id] }));
-
-  const inputCls = 'w-full bg-slate-950/50 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-indigo-500 transition';
 
   // ── body ───────────────────────────────────────────────
   const body = (
@@ -165,9 +148,11 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
       <header className="shrink-0 px-5 pt-5 pb-4 border-b border-slate-800/70">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-black font-display text-lg shrink-0">
-              {editedApp.companyName.charAt(0)}
-            </div>
+            <CompanyAvatar
+              name={editedApp.companyName}
+              color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+              className="w-10 h-10 text-lg"
+            />
             <div className="min-w-0">
               <h2 className="text-lg font-black font-display text-slate-100 tracking-tight truncate">{editedApp.companyName}</h2>
               <p className="text-xs text-slate-400 font-medium truncate">
@@ -319,24 +304,24 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                           value={phase.remarks}
                           onChange={e => handlePhaseChange(i, 'remarks', e.target.value)}
                           placeholder="Interviewer, format, topics, homework…"
-                          className={`${inputCls} resize-none leading-relaxed`}
+                          className={`${fieldInput} resize-none leading-relaxed`}
                         />
                       </Field>
 
                       <div className="grid grid-cols-2 gap-2.5">
                         <label className="block space-y-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> Good</span>
-                          <textarea rows={2} value={phase.pros} onChange={e => handlePhaseChange(i, 'pros', e.target.value)} placeholder="What went well" className={`${inputCls} resize-none leading-relaxed`} />
+                          <textarea rows={2} value={phase.pros} onChange={e => handlePhaseChange(i, 'pros', e.target.value)} placeholder="What went well" className={`${fieldInput} resize-none leading-relaxed`} />
                         </label>
                         <label className="block space-y-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1"><ThumbsDown className="w-3 h-3" /> Risk</span>
-                          <textarea rows={2} value={phase.cons} onChange={e => handlePhaseChange(i, 'cons', e.target.value)} placeholder="Concerns / gaps" className={`${inputCls} resize-none leading-relaxed`} />
+                          <textarea rows={2} value={phase.cons} onChange={e => handlePhaseChange(i, 'cons', e.target.value)} placeholder="Concerns / gaps" className={`${fieldInput} resize-none leading-relaxed`} />
                         </label>
                       </div>
 
                       <label className="block space-y-1.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1"><Quote className="w-3 h-3" /> Their words</span>
-                        <textarea rows={2} value={phase.feedback} onChange={e => handlePhaseChange(i, 'feedback', e.target.value)} placeholder="Direct quotes from the recruiter / interviewer" className={`${inputCls} resize-none leading-relaxed italic`} />
+                        <textarea rows={2} value={phase.feedback} onChange={e => handlePhaseChange(i, 'feedback', e.target.value)} placeholder="Direct quotes from the recruiter / interviewer" className={`${fieldInput} resize-none leading-relaxed italic`} />
                       </label>
                     </div>
                   )}
@@ -350,44 +335,34 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             <Section icon={Briefcase} title="Details" hint={`${editedApp.workModel} · ${editedApp.location}`} open={openSections.details} onToggle={() => toggleSection('details')}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Compensation">
-                  <input value={editedApp.salaryRange} onChange={e => handleFieldChange('salaryRange', e.target.value)} placeholder="$120k – $150k" className={inputCls} />
+                  <input value={editedApp.salaryRange} onChange={e => handleFieldChange('salaryRange', e.target.value)} placeholder="$120k – $150k" className={fieldInput} />
                 </Field>
                 <Field label="Benefits / Equity">
-                  <input value={editedApp.otherBenefits} onChange={e => handleFieldChange('otherBenefits', e.target.value)} placeholder="Bonus, equity, health" className={inputCls} />
+                  <input value={editedApp.otherBenefits} onChange={e => handleFieldChange('otherBenefits', e.target.value)} placeholder="Bonus, equity, health" className={fieldInput} />
                 </Field>
                 <Field label="Work model">
-                  <select value={editedApp.workModel} onChange={e => handleFieldChange('workModel', e.target.value as WorkModelType)} className={`${inputCls} cursor-pointer`}>
-                    <option value="Remote">Remote</option>
-                    <option value="Hybrid">Hybrid</option>
-                    <option value="Onsite">Onsite</option>
-                  </select>
+                  <OptionSelect value={editedApp.workModel} options={WORK_MODELS} onChange={v => handleFieldChange('workModel', v)} />
                 </Field>
                 <Field label="Location">
-                  <input value={editedApp.location} onChange={e => handleFieldChange('location', e.target.value)} placeholder="City, Country" className={inputCls} />
+                  <input value={editedApp.location} onChange={e => handleFieldChange('location', e.target.value)} placeholder="City, Country" className={fieldInput} />
                 </Field>
               </div>
               <Field label="Job description / keywords">
-                <textarea rows={3} value={editedApp.keyJdRequirements} onChange={e => handleFieldChange('keyJdRequirements', e.target.value)} placeholder="Stack, requirements, keywords…" className={`${inputCls} resize-y leading-relaxed`} />
+                <textarea rows={3} value={editedApp.keyJdRequirements} onChange={e => handleFieldChange('keyJdRequirements', e.target.value)} placeholder="Stack, requirements, keywords…" className={`${fieldInput} resize-y leading-relaxed`} />
               </Field>
             </Section>
 
             {/* CONTACTS & LINKS */}
             <Section icon={Users} title="Contacts & Links" hint={editedApp.hrContact || undefined} open={openSections.contacts} onToggle={() => toggleSection('contacts')}>
               <Field label="Recruiter / contact">
-                <input value={editedApp.hrContact} onChange={e => handleFieldChange('hrContact', e.target.value)} placeholder="Name · email · LinkedIn" className={inputCls} />
+                <input value={editedApp.hrContact} onChange={e => handleFieldChange('hrContact', e.target.value)} placeholder="Name · email · LinkedIn" className={fieldInput} />
               </Field>
               <Field label="Applied via">
-                <select value={editedApp.appliedVia} onChange={e => handleFieldChange('appliedVia', e.target.value as AppliedViaType)} className={`${inputCls} cursor-pointer`}>
-                  <option value="LinkedIn">LinkedIn</option>
-                  <option value="Email">Email</option>
-                  <option value="Company Form">Company Form</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Other">Other</option>
-                </select>
+                <OptionSelect value={editedApp.appliedVia} options={APPLIED_VIA} onChange={v => handleFieldChange('appliedVia', v)} />
               </Field>
               <Field label="Resume sent">
                 <div className="flex gap-1.5">
-                  <input value={editedApp.resumeLink} onChange={e => handleFieldChange('resumeLink', e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                  <input value={editedApp.resumeLink} onChange={e => handleFieldChange('resumeLink', e.target.value)} placeholder="https://…" className={`${fieldInput} font-mono`} />
                   {editedApp.resumeLink && (
                     <a href={editedApp.resumeLink} target="_blank" rel="noopener noreferrer" className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 transition" aria-label="Open resume">
                       <Link2 className="w-3.5 h-3.5" />
@@ -397,7 +372,7 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
               </Field>
               <Field label="Portfolio / repo">
                 <div className="flex gap-1.5">
-                  <input value={editedApp.portfolioLink} onChange={e => handleFieldChange('portfolioLink', e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                  <input value={editedApp.portfolioLink} onChange={e => handleFieldChange('portfolioLink', e.target.value)} placeholder="https://…" className={`${fieldInput} font-mono`} />
                   {editedApp.portfolioLink && (
                     <a href={editedApp.portfolioLink} target="_blank" rel="noopener noreferrer" className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 transition" aria-label="Open portfolio">
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -410,10 +385,10 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             {/* RETRO */}
             <Section icon={Award} title="Retro & Learnings" open={openSections.retro} onToggle={() => toggleSection('retro')}>
               <Field label="Skill gaps to close">
-                <textarea rows={2} value={editedApp.postMortem.skillsImprovements} onChange={e => handlePostMortemChange('skillsImprovements', e.target.value)} placeholder="What to study / practice before the next round" className={`${inputCls} resize-none leading-relaxed`} />
+                <textarea rows={2} value={editedApp.postMortem.skillsImprovements} onChange={e => handlePostMortemChange('skillsImprovements', e.target.value)} placeholder="What to study / practice before the next round" className={`${fieldInput} resize-none leading-relaxed`} />
               </Field>
               <Field label="Prep notes">
-                <textarea rows={2} value={editedApp.postMortem.preparationNotes} onChange={e => handlePostMortemChange('preparationNotes', e.target.value)} placeholder="How to prepare next time" className={`${inputCls} resize-none leading-relaxed`} />
+                <textarea rows={2} value={editedApp.postMortem.preparationNotes} onChange={e => handlePostMortemChange('preparationNotes', e.target.value)} placeholder="How to prepare next time" className={`${fieldInput} resize-none leading-relaxed`} />
               </Field>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

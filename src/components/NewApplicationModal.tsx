@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { JobApplication, WorkModelType, AppliedViaType, PriorityLevel, InterviewPhase } from '../types';
 import { createDefaultPhases } from '../data';
 import { deriveCurrentStatus, extractTechTags } from '../lib/appUtils';
-import { X, Check, ChevronDown, Calendar, Wand2 } from 'lucide-react';
+import { WORK_MODELS, APPLIED_VIA } from '../lib/statusStyles';
+import { Field, Segmented, OptionSelect, fieldInput } from './common/Field';
+import { Modal, ModalHeader } from './common/Modal';
+import { Check, ChevronDown, Calendar, Wand2 } from 'lucide-react';
 
 interface NewApplicationModalProps {
   isOpen: boolean;
@@ -11,39 +14,6 @@ interface NewApplicationModalProps {
 }
 
 type IntakeStatus = 'saved' | 'applied' | 'interviewing';
-
-const inputCls = 'w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 transition';
-
-// Module-level so the wrapped inputs don't remount (and lose focus) on each keystroke.
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function Segmented<T extends string>({ value, options, onChange }: {
-  value: T; options: { value: T; label: string }[]; onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex gap-0.5 bg-slate-950/50 p-0.5 rounded-lg border border-slate-800 w-full">
-      {options.map(o => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={`flex-1 px-2 py-1.5 text-[11px] font-bold rounded-md transition ${
-            value === o.value ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // Build the phase array + status from the intake choice.
 function buildPhases(intake: IntakeStatus, appliedDate: string): { phases: InterviewPhase[]; currentStatus: string } {
@@ -85,15 +55,6 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
   const [priority, setPriority] = useState<PriorityLevel | ''>('');
 
   const [errors, setErrors] = useState<{ companyName?: string; targetRole?: string }>({});
-
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
 
   // Best-effort local autofill: pull known keywords from the JD into the
   // requirements field. Full company/role/comp parsing arrives with the pipeline.
@@ -159,21 +120,12 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
+    <Modal open={isOpen} onClose={onClose}>
       <div
-        className="glass-panel bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col elevation-3"
+        className="relative glass-panel bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col elevation-3"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center shrink-0">
-          <h2 className="text-lg font-black font-display text-slate-100">Add application</h2>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition" aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <ModalHeader title="Add application" onClose={onClose} />
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-5 space-y-5">
@@ -186,7 +138,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   value={jdInput}
                   onChange={e => setJdInput(e.target.value)}
                   placeholder="Paste a LinkedIn / careers link, or the full job description…"
-                  className={`${inputCls} resize-none leading-relaxed`}
+                  className={`${fieldInput} resize-none leading-relaxed`}
                   autoFocus
                 />
                 <div className="flex items-center justify-between">
@@ -210,7 +162,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   value={companyName}
                   onChange={e => setCompanyName(e.target.value)}
                   placeholder="e.g. Tano AI"
-                  className={`${inputCls} ${errors.companyName ? 'border-rose-500' : ''}`}
+                  className={`${fieldInput} ${errors.companyName ? 'border-rose-500' : ''}`}
                 />
                 {errors.companyName && <span className="text-[10px] text-rose-500 font-bold">{errors.companyName}</span>}
               </Field>
@@ -219,7 +171,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   value={targetRole}
                   onChange={e => setTargetRole(e.target.value)}
                   placeholder="e.g. Backend Engineer"
-                  className={`${inputCls} ${errors.targetRole ? 'border-rose-500' : ''}`}
+                  className={`${fieldInput} ${errors.targetRole ? 'border-rose-500' : ''}`}
                 />
                 {errors.targetRole && <span className="text-[10px] text-rose-500 font-bold">{errors.targetRole}</span>}
               </Field>
@@ -242,13 +194,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   </div>
                 </Field>
                 <Field label="Via">
-                  <select value={appliedVia} onChange={e => setAppliedVia(e.target.value as AppliedViaType)} className={`${inputCls} cursor-pointer`}>
-                    <option value="LinkedIn">LinkedIn</option>
-                    <option value="Email">Email</option>
-                    <option value="Company Form">Company Form</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <OptionSelect value={appliedVia} options={APPLIED_VIA} onChange={setAppliedVia} />
                 </Field>
               </div>
             </div>
@@ -270,38 +216,34 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                 <div className="space-y-4 pb-1 pt-1">
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Work model">
-                      <select value={workModel} onChange={e => setWorkModel(e.target.value as WorkModelType)} className={`${inputCls} cursor-pointer`}>
-                        <option value="Remote">Remote</option>
-                        <option value="Hybrid">Hybrid</option>
-                        <option value="Onsite">Onsite</option>
-                      </select>
+                      <OptionSelect value={workModel} options={WORK_MODELS} onChange={setWorkModel} />
                     </Field>
                     <Field label="Location">
-                      <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Country" className={inputCls} />
+                      <input value={location} onChange={e => setLocation(e.target.value)} placeholder="City, Country" className={fieldInput} />
                     </Field>
                     <Field label="Compensation">
-                      <input value={salaryRange} onChange={e => setSalaryRange(e.target.value)} placeholder="$120k – $150k (posted or expected)" className={inputCls} />
+                      <input value={salaryRange} onChange={e => setSalaryRange(e.target.value)} placeholder="$120k – $150k (posted or expected)" className={fieldInput} />
                     </Field>
                     <Field label="Benefits / equity">
-                      <input value={otherBenefits} onChange={e => setOtherBenefits(e.target.value)} placeholder="Bonus, equity, health" className={inputCls} />
+                      <input value={otherBenefits} onChange={e => setOtherBenefits(e.target.value)} placeholder="Bonus, equity, health" className={fieldInput} />
                     </Field>
                   </div>
 
                   <Field label="Recruiter / contact">
-                    <input value={hrContact} onChange={e => setHrContact(e.target.value)} placeholder="Name · email · LinkedIn" className={inputCls} />
+                    <input value={hrContact} onChange={e => setHrContact(e.target.value)} placeholder="Name · email · LinkedIn" className={fieldInput} />
                   </Field>
 
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Resume sent">
-                      <input type="url" value={resumeLink} onChange={e => setResumeLink(e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                      <input type="url" value={resumeLink} onChange={e => setResumeLink(e.target.value)} placeholder="https://…" className={`${fieldInput} font-mono`} />
                     </Field>
                     <Field label="Portfolio / repo">
-                      <input type="url" value={portfolioLink} onChange={e => setPortfolioLink(e.target.value)} placeholder="https://…" className={`${inputCls} font-mono`} />
+                      <input type="url" value={portfolioLink} onChange={e => setPortfolioLink(e.target.value)} placeholder="https://…" className={`${fieldInput} font-mono`} />
                     </Field>
                   </div>
 
                   <Field label="Requirements / keywords">
-                    <textarea rows={3} value={keyJdRequirements} onChange={e => setKeyJdRequirements(e.target.value)} placeholder="Stack, must-haves, keywords…" className={`${inputCls} resize-y leading-relaxed`} />
+                    <textarea rows={3} value={keyJdRequirements} onChange={e => setKeyJdRequirements(e.target.value)} placeholder="Stack, must-haves, keywords…" className={`${fieldInput} resize-y leading-relaxed`} />
                   </Field>
 
                   <Field label="Priority">
@@ -327,6 +269,6 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

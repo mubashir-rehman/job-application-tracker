@@ -5,28 +5,11 @@ import {
   AlertCircle, Eye, EyeOff, Wand2, Clock,
   ExternalLink, ChevronRight,
 } from 'lucide-react';
-
-type Provider = 'openai' | 'anthropic' | 'gemini';
-
-interface ApiKeys {
-  openai?: string;
-  anthropic?: string;
-  gemini?: string;
-}
-
-const PROVIDERS: { id: Provider; label: string; placeholder: string; hint: string }[] = [
-  { id: 'anthropic', label: 'Anthropic (Claude)', placeholder: 'sk-ant-api03-...', hint: 'claude.ai/settings' },
-  { id: 'openai',    label: 'OpenAI (GPT-4o)',    placeholder: 'sk-proj-...',       hint: 'platform.openai.com' },
-  { id: 'gemini',    label: 'Google Gemini',       placeholder: 'AIzaSy...',         hint: 'aistudio.google.com' },
-];
-
-function loadApiKeys(): ApiKeys {
-  try { return JSON.parse(localStorage.getItem('hiretrack_api_keys') || '{}'); }
-  catch { return {}; }
-}
+import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
+import { useApiKeys } from '../hooks/useApiKeys';
 
 export function ResumeBuilder() {
-  const [apiKeys, setApiKeys]         = useState<ApiKeys>(loadApiKeys);
+  const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
   const [keyInputs, setKeyInputs]     = useState<Partial<Record<Provider, string>>>({});
   const [showKeys, setShowKeys]       = useState<Partial<Record<Provider, boolean>>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
@@ -35,23 +18,13 @@ export function ResumeBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab]     = useState<'generate' | 'keys' | 'history'>('generate');
 
-  const hasAnyKey         = PROVIDERS.some(p => !!apiKeys[p.id]);
   const selectedKeyExists = !!apiKeys[selectedProvider];
 
-  const saveKey = (provider: Provider) => {
+  const commitKey = (provider: Provider) => {
     const key = keyInputs[provider]?.trim();
     if (!key) return;
-    const updated = { ...apiKeys, [provider]: key };
-    setApiKeys(updated);
-    localStorage.setItem('hiretrack_api_keys', JSON.stringify(updated));
+    saveKey(provider, key);
     setKeyInputs(prev => ({ ...prev, [provider]: '' }));
-  };
-
-  const removeKey = (provider: Provider) => {
-    const updated = { ...apiKeys };
-    delete updated[provider];
-    setApiKeys(updated);
-    localStorage.setItem('hiretrack_api_keys', JSON.stringify(updated));
   };
 
   const handleGenerate = async () => {
@@ -322,9 +295,7 @@ export function ResumeBuilder() {
                 {saved ? (
                   <div className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-3 py-2.5 border border-slate-800">
                     <Key className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                    <span className="text-xs font-mono text-slate-500">
-                      {apiKeys[p.id]!.slice(0, 10)}{'•'.repeat(24)}
-                    </span>
+                    <span className="text-xs font-mono text-slate-500">{maskKey(apiKeys[p.id]!, 10, 24)}</span>
                   </div>
                 ) : (
                   <div className="flex gap-2">
@@ -333,7 +304,7 @@ export function ResumeBuilder() {
                         type={showKeys[p.id] ? 'text' : 'password'}
                         value={keyInputs[p.id] || ''}
                         onChange={e => setKeyInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && saveKey(p.id)}
+                        onKeyDown={e => e.key === 'Enter' && commitKey(p.id)}
                         placeholder={p.placeholder}
                         className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition pr-10"
                       />
@@ -347,7 +318,7 @@ export function ResumeBuilder() {
                       </button>
                     </div>
                     <button
-                      onClick={() => saveKey(p.id)}
+                      onClick={() => commitKey(p.id)}
                       disabled={!keyInputs[p.id]?.trim()}
                       className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs transition shrink-0"
                     >

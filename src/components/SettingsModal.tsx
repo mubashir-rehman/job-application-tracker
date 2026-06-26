@@ -1,25 +1,10 @@
-import React, { useState } from 'react';
-import { Key, X, Eye, EyeOff, CheckCircle2, Settings, User } from 'lucide-react';
+import { useState } from 'react';
+import { Key, Eye, EyeOff, CheckCircle2, Settings, User } from 'lucide-react';
+import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
+import { useApiKeys } from '../hooks/useApiKeys';
+import { Modal, ModalHeader } from './common/Modal';
 
-type Provider = 'openai' | 'anthropic' | 'gemini';
-
-interface ApiKeys { openai?: string; anthropic?: string; gemini?: string; }
-
-const PROVIDERS: { id: Provider; label: string; placeholder: string }[] = [
-  { id: 'anthropic', label: 'Anthropic (Claude)', placeholder: 'sk-ant-api03-...' },
-  { id: 'openai',    label: 'OpenAI (GPT-4o)',    placeholder: 'sk-proj-...' },
-  { id: 'gemini',    label: 'Google Gemini',       placeholder: 'AIzaSy...' },
-];
-
-function loadApiKeys(): ApiKeys {
-  try { return JSON.parse(localStorage.getItem('hiretrack_api_keys') || '{}'); }
-  catch { return {}; }
-}
-
-export function hasAnyApiKey(): boolean {
-  const keys = loadApiKeys();
-  return PROVIDERS.some(p => !!keys[p.id]);
-}
+export { hasAnyApiKey } from '../lib/apiKeys';
 
 interface SettingsModalProps {
   open: boolean;
@@ -27,7 +12,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
-  const [apiKeys, setApiKeys]     = useState<ApiKeys>(loadApiKeys);
+  const { apiKeys, saveKey, removeKey } = useApiKeys();
   const [keyInputs, setKeyInputs] = useState<Partial<Record<Provider, string>>>({});
   const [showKeys, setShowKeys]   = useState<Partial<Record<Provider, boolean>>>({});
   const [profileResumeUrl, setProfileResumeUrl] = useState(
@@ -35,30 +20,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   );
   const [resumeInput, setResumeInput] = useState('');
 
-  // Escape closes
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const saveKey = (provider: Provider) => {
+  const commitKey = (provider: Provider) => {
     const key = keyInputs[provider]?.trim();
     if (!key) return;
-    const updated = { ...apiKeys, [provider]: key };
-    setApiKeys(updated);
-    localStorage.setItem('hiretrack_api_keys', JSON.stringify(updated));
+    saveKey(provider, key);
     setKeyInputs(prev => ({ ...prev, [provider]: '' }));
-  };
-
-  const removeKey = (provider: Provider) => {
-    const updated = { ...apiKeys };
-    delete updated[provider];
-    setApiKeys(updated);
-    localStorage.setItem('hiretrack_api_keys', JSON.stringify(updated));
   };
 
   const saveProfileResume = () => {
@@ -75,28 +41,14 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-end p-4 pt-16">
-      <div className="absolute inset-0 bg-slate-950/40" onClick={onClose} />
-
+    <Modal open={open} onClose={onClose} placement="top-right" z="z-[60]">
       <div
         className="relative w-full max-w-sm glass-panel bg-slate-900 rounded-2xl overflow-hidden elevation-3"
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-          <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-indigo-400" />
-            Settings
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition"
-            aria-label="Close settings"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <ModalHeader title="Settings" icon={Settings} titleClassName="text-sm" onClose={onClose} closeLabel="Close settings" />
 
         <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
           {/* AI Provider Keys */}
@@ -131,9 +83,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
                   {saved ? (
                     <div className="flex items-center gap-2 bg-slate-950/60 rounded-lg px-2.5 py-1.5 border border-slate-800">
-                      <span className="text-[10px] font-mono text-slate-600">
-                        {apiKeys[p.id]!.slice(0, 8)}{'•'.repeat(16)}
-                      </span>
+                      <span className="text-[10px] font-mono text-slate-600">{maskKey(apiKeys[p.id]!)}</span>
                     </div>
                   ) : (
                     <div className="flex gap-1.5">
@@ -142,7 +92,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                           type={showKeys[p.id] ? 'text' : 'password'}
                           value={keyInputs[p.id] || ''}
                           onChange={e => setKeyInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
-                          onKeyDown={e => e.key === 'Enter' && saveKey(p.id)}
+                          onKeyDown={e => e.key === 'Enter' && commitKey(p.id)}
                           placeholder={p.placeholder}
                           className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 transition pr-8"
                         />
@@ -156,7 +106,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                         </button>
                       </div>
                       <button
-                        onClick={() => saveKey(p.id)}
+                        onClick={() => commitKey(p.id)}
                         disabled={!keyInputs[p.id]?.trim()}
                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition shrink-0"
                       >
@@ -213,6 +163,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
