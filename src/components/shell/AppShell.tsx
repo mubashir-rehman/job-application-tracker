@@ -42,6 +42,13 @@ export function AppShell({
   const { pull, refreshing } = usePullToRefresh(mainRef, onRefresh ?? (() => {}), isMobile && !!onRefresh);
   return (
     <div className="ambient-bg h-screen flex overflow-hidden text-slate-100 font-sans">
+      {/* Keyboard users can jump past the nav straight to the content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:z-[200] focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-indigo-600 focus:text-white focus:font-bold focus:text-sm focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <Sidebar
         theme={theme}
         onToggleTheme={onToggleTheme}
@@ -92,7 +99,7 @@ export function AppShell({
         )}
 
         {/* Scrollable content region — extra bottom padding on mobile clears the fixed tab bar */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-28 md:pb-6 min-w-0 overscroll-y-contain">
+        <main id="main-content" tabIndex={-1} ref={mainRef} aria-label="Main content" className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-28 md:pb-6 min-w-0 overscroll-y-contain focus:outline-none">
           {/* Pull-to-refresh indicator (mobile) */}
           <div
             className="md:hidden flex items-end justify-center overflow-hidden"

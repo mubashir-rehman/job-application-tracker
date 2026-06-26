@@ -271,6 +271,21 @@ select option {
     @apply bg-background text-foreground;
     overflow-x: hidden;
   }
+
+  /* Visible keyboard focus for everything interactive. Many components set
+     `outline-none` for the mouse; this restores a clear ring for keyboard
+     users only (:focus-visible), overriding those with !important. */
+  a:focus-visible,
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid #6366f1 !important;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 /* Respect users who prefer reduced motion — neutralizes transitions,

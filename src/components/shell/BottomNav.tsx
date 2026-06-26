@@ -36,6 +36,7 @@ export function BottomNav({ activeView, onChangeView, onNewApplication }: Bottom
                 key={key}
                 onClick={() => !soon && onChangeView(key)}
                 disabled={soon}
+                aria-label={soon ? `${shortLabel} (coming soon)` : undefined}
                 aria-current={active ? 'page' : undefined}
                 className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition ${
                   active
