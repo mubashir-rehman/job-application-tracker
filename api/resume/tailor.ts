@@ -79,7 +79,7 @@ const handler: Handler = async (req, res) => {
     // Reasoning ON — tailoring is a hard judgement task (positioning, defensibility,
     // exact-keyword mapping). Generous budget so reasoning + resume + the two
     // appended sections all fit (reasoning models would otherwise truncate).
-    const tailoredMd = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 4096, thinking: true });
+    const tailoredMd = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 8192, thinking: true });
     res.status(200).json({ tailoredMd, provider });
   } catch (e) {
     const err = e as LLMError;

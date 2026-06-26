@@ -31,10 +31,11 @@ export interface LLMOptions {
   maxTokens?: number;
   baseUrl?: string; // required for provider 'custom' (OpenAI-compatible endpoint)
   // Opt INTO reasoning for hard generative tasks (e.g. resume tailoring). Default
-  // off — most calls want the answer, not tokens spent thinking. When on, give a
-  // generous maxTokens so reasoning + the answer both fit. Gemini uses a dynamic
-  // thinking budget; Anthropic uses extended thinking; OpenAI-compatible/MiMo
-  // models reason intrinsically (no flag — just the larger token budget).
+  // off — most calls want the answer, not tokens spent thinking. `maxTokens` is the
+  // budget for the ANSWER; when thinking is on the reasoning allowance is added on
+  // top (see tokenBudget) so the answer never gets truncated by reasoning. Gemini
+  // and Anthropic get an explicit bounded thinking budget; OpenAI-compatible/MiMo
+  // reason in-band, so they just get the larger combined token budget.
   thinking?: boolean;
 }
 
@@ -93,6 +94,17 @@ async function geminiSearch({ apiKey, prompt, system, model, maxTokens }: LLMOpt
   return { text, sources };
 }
 
+// Decouple the reasoning budget from the output budget. `maxTokens` is what the
+// caller wants for the ANSWER; when thinking is on the reasoning allowance is added
+// ON TOP, so the answer always has its full budget. Reasoning models otherwise spend
+// the output budget thinking and truncate — e.g. a tailored resume cut off after the
+// summary. Thinking off → think=0, total=out (non-reasoning calls are unchanged).
+function tokenBudget(maxTokens: number | undefined, thinking: boolean | undefined, def: number) {
+  const out = maxTokens ?? def;
+  const think = thinking ? Math.min(out, 4096) : 0;
+  return { out, think, total: out + think };
+}
+
 export async function callLLM(opts: LLMOptions): Promise<string> {
   const { provider } = opts;
   if (provider === 'anthropic') return callAnthropic(opts);
@@ -109,9 +121,10 @@ export async function callLLM(opts: LLMOptions): Promise<string> {
 }
 
 async function callAnthropic({ apiKey, prompt, system, model, maxTokens, thinking }: LLMOptions): Promise<string> {
-  // Extended thinking needs max_tokens > budget_tokens; budget ~half the cap.
-  const max = maxTokens ?? 2000;
-  const useThinking = thinking && max > 2048;
+  const { out, think, total } = tokenBudget(maxTokens, thinking, 2000);
+  // Anthropic's minimum thinking budget is 1024; below that, skip thinking and keep
+  // max_tokens at the output budget. Otherwise max_tokens covers thinking + answer.
+  const useThinking = think >= 1024;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -121,9 +134,9 @@ async function callAnthropic({ apiKey, prompt, system, model, maxTokens, thinkin
     },
     body: JSON.stringify({
       model: model || DEFAULT_MODEL.anthropic,
-      max_tokens: max,
+      max_tokens: useThinking ? total : out,
       ...(system ? { system } : {}),
-      ...(useThinking ? { thinking: { type: 'enabled', budget_tokens: Math.floor(max / 2) } } : {}),
+      ...(useThinking ? { thinking: { type: 'enabled', budget_tokens: think } } : {}),
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -136,13 +149,16 @@ async function callAnthropic({ apiKey, prompt, system, model, maxTokens, thinkin
 
 // Shared by OpenAI and any OpenAI-chat-completions-compatible provider (MiMo).
 async function callOpenAICompatible(
-  { apiKey, prompt, system, model, maxTokens }: LLMOptions,
+  { apiKey, prompt, system, model, maxTokens, thinking }: LLMOptions,
   baseUrl: string,
   defaultModel: string,
 ): Promise<string> {
   const messages: { role: string; content: string }[] = [];
   if (system) messages.push({ role: 'system', content: system });
   messages.push({ role: 'user', content: prompt });
+  // MiMo/OpenAI-compatible models reason in-band (no separate thinking knob), so the
+  // reasoning eats max_tokens. Add the thinking allowance so the answer still fits.
+  const { total } = tokenBudget(maxTokens, thinking, 2000);
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -151,7 +167,7 @@ async function callOpenAICompatible(
     },
     body: JSON.stringify({
       model: model || defaultModel,
-      max_tokens: maxTokens ?? 2000,
+      max_tokens: total,
       messages,
     }),
   });
@@ -162,9 +178,10 @@ async function callOpenAICompatible(
 
 async function callGemini({ apiKey, prompt, system, model, maxTokens, thinking }: LLMOptions): Promise<string> {
   const m = model || DEFAULT_MODEL.gemini;
-  // thinking on → dynamic budget (model decides how much to reason). Off → 0, so a
-  // small maxOutputTokens isn't eaten by reasoning and the answer comes back empty.
-  const thinkingBudget = thinking ? -1 : 0;
+  // Gemini counts thinking tokens against maxOutputTokens. Use a BOUNDED thinking
+  // budget (not -1/dynamic, which can eat the whole budget and leave only a summary)
+  // and size maxOutputTokens to cover thinking + answer. Off → think=0, total=out.
+  const { think, total } = tokenBudget(maxTokens, thinking, 2000);
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
@@ -173,7 +190,7 @@ async function callGemini({ apiKey, prompt, system, model, maxTokens, thinking }
       body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: maxTokens ?? 2000, thinkingConfig: { thinkingBudget } },
+        generationConfig: { maxOutputTokens: total, thinkingConfig: { thinkingBudget: think } },
       }),
     },
   );
