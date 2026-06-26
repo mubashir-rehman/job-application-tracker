@@ -5,10 +5,14 @@ import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Wand2, Clock,
   Copy, Download, Check, FileUp, Server, ShieldCheck, Printer,
+  Briefcase, Trash2, Eye,
 } from 'lucide-react';
+import { JobApplication } from '../types';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
+import { useTailoredResumes } from '../hooks/useTailoredResumes';
+import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
 import { splitTailored, downloadDocx, printPdf } from '../lib/resumeRender';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
@@ -17,11 +21,17 @@ import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/cus
 const providerLabel = (id: Provider) =>
   id === 'custom' ? 'Custom endpoint' : PROVIDERS.find(p => p.id === id)?.label ?? id;
 
-export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | null; onManageKeys: () => void }) {
+export function ResumeBuilder({ user, applications, onManageKeys }: {
+  user: SupabaseUser | null;
+  applications: JobApplication[];
+  onManageKeys: () => void;
+}) {
   const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
+  const { items: history, add: addTailored, remove: removeTailored } = useTailoredResumes(user);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [customCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
+  const [selectedJobId, setSelectedJobId] = useState('');     // '' = quick paste (no job)
   const [jdText, setJdText]           = useState('');
   const [result, setResult]           = useState('');
   const [error, setError]             = useState<string | null>(null);
@@ -55,6 +65,25 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
     : status === 'loading' ? 'loading…'
     : status === 'error' ? 'saved locally (cloud failed)'
     : 'saved locally';
+
+  // Human title for a job / history entry.
+  const jobTitle = (a: JobApplication) => `${a.companyName} — ${a.targetRole}`;
+  const historyTitle = (t: TailoredResume) => {
+    if (t.jobId) {
+      const a = applications.find(x => x.id === t.jobId);
+      if (a) return jobTitle(a);
+    }
+    return t.label || 'Tailored resume';
+  };
+
+  // Pick a job to tailor for → prefill its stored JD (editable fallback remains).
+  const onPickJob = (id: string) => {
+    setSelectedJobId(id);
+    if (id) {
+      const a = applications.find(x => x.id === id);
+      if (a?.jdText) setJdText(a.jdText);
+    }
+  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +124,10 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
     try {
       const md = await tailorResume({ ...callConfig(), masterMd, jdText });
       setResult(md);
+      // Save to history — linked to the chosen job, or local-only for quick paste.
+      const job = selectedJobId ? applications.find(x => x.id === selectedJobId) : undefined;
+      const label = job ? jobTitle(job) : (jdText.trim().split('\n').find(Boolean)?.slice(0, 60) || 'Quick tailor');
+      addTailored({ jobId: selectedJobId || null, label, contentMd: md });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed');
     } finally {
@@ -102,37 +135,47 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
     }
   };
 
-  const copyResult = async () => {
-    await navigator.clipboard.writeText(result);
+  // Export helpers take the markdown so both the live result and history reuse them.
+  const copyMd = async (md: string) => {
+    await navigator.clipboard.writeText(md);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
-
-  const downloadResult = () => {
-    const blob = new Blob([result], { type: 'text/markdown' });
+  const downloadMd = (md: string) => {
+    const blob = new Blob([md], { type: 'text/markdown' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'tailored-resume.md';
     a.click();
     URL.revokeObjectURL(a.href);
   };
-
-  // Stage 5 — render the resume part only (not the Inventory/Honesty sections).
-  const downloadDocxResult = async () => {
-    try {
-      await downloadDocx(splitTailored(result).resumeMd);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not build the .docx');
-    }
+  const downloadDocxMd = async (md: string) => {
+    try { await downloadDocx(splitTailored(md).resumeMd); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not build the .docx'); }
+  };
+  const printPdfMd = (md: string) => {
+    try { printPdf(splitTailored(md).resumeMd); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not open the print view'); }
   };
 
-  const printPdfResult = () => {
-    try {
-      printPdf(splitTailored(result).resumeMd);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open the print view');
-    }
-  };
+  // Toolbar of export actions, shared by the result pane and history rows.
+  const ExportButtons = ({ md }: { md: string }) => (
+    <div className="flex items-center gap-1.5">
+      <button onClick={() => copyMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Copy resume">
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+      <button onClick={() => downloadMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download resume as Markdown">
+        <Download className="w-3.5 h-3.5" /> .md
+      </button>
+      <button onClick={() => downloadDocxMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download ATS-safe Word document" title="Single-column ATS-safe .docx">
+        <FileText className="w-3.5 h-3.5 text-sky-400" /> .docx
+      </button>
+      <button onClick={() => printPdfMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Export as PDF via print" title="Designed PDF (print → Save as PDF)">
+        <Printer className="w-3.5 h-3.5 text-indigo-400" /> PDF
+      </button>
+    </div>
+  );
 
   const tabs = [
     { id: 'generate' as const, label: 'Generate',  Icon: Wand2  },
@@ -159,6 +202,9 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
           >
             <Icon className="w-3.5 h-3.5" />
             {label}
+            {id === 'history' && history.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[9px] text-slate-300 font-mono">{history.length}</span>
+            )}
           </button>
         ))}
         <button
@@ -283,12 +329,27 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
               <p className="text-[10px] text-slate-500">{user ? 'Auto-saved to your cloud master_resume; mirrored locally.' : 'Stored in your browser. Sign in to sync to the cloud master CV.'}</p>
             </div>
 
-            {/* Job description */}
+            {/* Job + description */}
             <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
               <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
-                <Wand2 className="w-4 h-4 text-indigo-400" />
-                Job Description
+                <Briefcase className="w-4 h-4 text-indigo-400" />
+                Tailor for
               </h3>
+              <select
+                value={selectedJobId}
+                onChange={e => onPickJob(e.target.value)}
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition"
+              >
+                <option value="">Quick paste (no job)</option>
+                {applications.map(a => (
+                  <option key={a.id} value={a.id}>{a.companyName} — {a.targetRole}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500">
+                {selectedJobId
+                  ? 'Job description prefilled from this application — edit below if needed. The result is saved to History for this job.'
+                  : 'Pick a saved application to prefill its job description, or paste one below for a one-off tailor.'}
+              </p>
               <textarea
                 value={jdText}
                 onChange={e => setJdText(e.target.value)}
@@ -298,59 +359,22 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
               />
             </div>
 
-            {/* Provider selector */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+            {/* Provider selector (compact — keys live in the API Keys view) */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
               <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
                 AI Provider
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {PROVIDERS.map(p => {
-                  const configured = !!apiKeys[p.id];
-                  const selected   = selectedProvider === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedProvider(p.id)}
-                      className={`p-3.5 rounded-xl border text-left transition-all ${
-                        selected
-                          ? 'border-indigo-500 bg-indigo-600/10'
-                          : 'border-slate-700 hover:border-slate-600'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-bold ${selected ? 'text-slate-100' : 'text-slate-400'}`}>
-                          {p.label}
-                        </span>
-                        {configured
-                          ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          : <span className="text-[9px] text-slate-600 font-mono">no key</span>
-                        }
-                      </div>
-                      {selected && <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />}
-                    </button>
-                  );
-                })}
-
-                {/* Custom OpenAI-compatible endpoint (freellmapi, OpenRouter, LM Studio, vLLM…) */}
-                <button
-                  onClick={() => setSelectedProvider('custom')}
-                  className={`p-3.5 rounded-xl border text-left transition-all ${
-                    isCustom ? 'border-indigo-500 bg-indigo-600/10' : 'border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs font-bold flex items-center gap-1.5 ${isCustom ? 'text-slate-100' : 'text-slate-400'}`}>
-                      <Server className="w-3.5 h-3.5 shrink-0" /> Custom (OpenAI-compatible)
-                    </span>
-                    {customReady
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      : <span className="text-[9px] text-slate-600 font-mono">set up</span>
-                    }
-                  </div>
-                  {isCustom && <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />}
-                </button>
-              </div>
+              <select
+                value={selectedProvider}
+                onChange={e => setSelectedProvider(e.target.value as Provider)}
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition"
+              >
+                {PROVIDERS.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}{apiKeys[p.id] ? '  ✓ key set' : '  — no key'}</option>
+                ))}
+                <option value="custom">Custom (OpenAI-compatible){customReady ? '  ✓ set up' : '  — set up'}</option>
+              </select>
 
               {!selectedKeyExists && (
                 <p className="text-[11px] text-amber-400/80 flex items-center gap-1.5">
@@ -402,21 +426,7 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     Tailored resume
                   </h3>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={copyResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Copy resume">
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
-                    <button onClick={downloadResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download resume as Markdown">
-                      <Download className="w-3.5 h-3.5" /> .md
-                    </button>
-                    <button onClick={downloadDocxResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download ATS-safe Word document" title="Single-column ATS-safe .docx">
-                      <FileText className="w-3.5 h-3.5 text-sky-400" /> .docx
-                    </button>
-                    <button onClick={printPdfResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Export as PDF via print" title="Designed PDF (print → Save as PDF)">
-                      <Printer className="w-3.5 h-3.5 text-indigo-400" /> PDF
-                    </button>
-                  </div>
+                  <ExportButtons md={result} />
                 </div>
                 <pre className="px-5 py-4 overflow-auto text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-mono">{result}</pre>
               </div>
@@ -426,8 +436,8 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
                 <ol className="space-y-3">
                   {[
                     'Paste your master CV once (the source of truth)',
-                    'Paste the job description for this role',
-                    'Pick the AI provider you have a key for',
+                    'Pick a saved job (prefills its JD) or paste one',
+                    'Choose the AI provider you have a key for',
                     'Generate — the CV is tailored to one lane, matching JD phrasing',
                     'Export: Markdown, single-column ATS .docx, or a designed PDF',
                   ].map((step, i) => (
@@ -451,24 +461,60 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
 
       {/* ── HISTORY TAB ──────────────────────────────────────── */}
       {activeTab === 'history' && (
-        <div className="glass-panel p-12 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center gap-4">
-          <div className="w-14 h-14 bg-slate-800/60 rounded-2xl border border-slate-700 flex items-center justify-center">
-            <Clock className="w-7 h-7 text-slate-600" />
+        history.length === 0 ? (
+          <div className="glass-panel p-12 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-14 h-14 bg-slate-800/60 rounded-2xl border border-slate-700 flex items-center justify-center">
+              <Clock className="w-7 h-7 text-slate-600" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-300 text-base">No resumes generated yet</h3>
+              <p className="text-xs text-slate-500 mt-1.5 max-w-xs leading-relaxed">
+                Generated resumes appear here, linked to the job you tailored them for, with download options for each format.
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('generate')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs transition"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              Generate your first resume
+            </button>
           </div>
-          <div>
-            <h3 className="font-extrabold text-slate-300 text-base">No resumes generated yet</h3>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-xs leading-relaxed">
-              Generated resumes will appear here, linked to your job applications with download options for each format.
-            </p>
+        ) : (
+          <div className="space-y-3">
+            {history.map(t => (
+              <div key={t.id} className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-extrabold text-slate-100 truncate flex items-center gap-2">
+                    {t.jobId ? <Briefcase className="w-3.5 h-3.5 text-indigo-400 shrink-0" /> : <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0" />}
+                    <span className="truncate">{historyTitle(t)}</span>
+                    {t.version > 1 && <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[9px] text-slate-400 font-mono shrink-0">v{t.version}</span>}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {new Date(t.createdAt).toLocaleString()}{!t.jobId && ' · quick paste (local only)'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => { setResult(t.contentMd); setActiveTab('generate'); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition"
+                    aria-label="View resume"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View
+                  </button>
+                  <ExportButtons md={t.contentMd} />
+                  <button
+                    onClick={() => removeTailored(t.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-rose-900/40 text-[11px] font-bold text-slate-400 hover:text-rose-300 transition"
+                    aria-label="Delete resume"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          <button
-            onClick={() => setActiveTab('generate')}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs transition"
-          >
-            <Wand2 className="w-3.5 h-3.5" />
-            Generate your first resume
-          </button>
-        </div>
+        )
       )}
     </div>
   );

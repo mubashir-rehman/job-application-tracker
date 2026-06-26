@@ -194,7 +194,7 @@ export default function App() {
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder user={user} onManageKeys={() => setActiveView('keys')} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
+        {isResume ? <ResumeBuilder user={user} applications={applications} onManageKeys={() => setActiveView('keys')} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
