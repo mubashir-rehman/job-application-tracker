@@ -87,6 +87,9 @@ async function run() {
         "resumeLink" text,
         "portfolioLink" text,
         "keyJdRequirements" text,
+        "jdUrl" text,
+        "jdText" text,
+        "priority" text,
         "currentStatus" text not null,
         "phases" jsonb not null default '[]'::jsonb,
         "postMortem" jsonb not null default '{}'::jsonb,
@@ -103,8 +106,17 @@ async function run() {
     `);
     console.log('   - Column "userId" verified successfully.');
 
-    // Step 3: Disable Row Level Security (RLS) for simple integration
-    console.log('🔧 \x1b[33m%s\x1b[0m', 'Step 3: Disabling Row Level Security (RLS)...');
+    // Step 3: Ensure pipeline columns exist (added with the JD-first form revamp)
+    console.log('🔧 \x1b[33m%s\x1b[0m', 'Step 3: Checking and appending pipeline columns...');
+    await client.query(`
+      alter table public.job_applications add column if not exists "jdUrl" text;
+      alter table public.job_applications add column if not exists "jdText" text;
+      alter table public.job_applications add column if not exists "priority" text;
+    `);
+    console.log('   - Columns "jdUrl", "jdText", "priority" verified successfully.');
+
+    // Step 4: Disable Row Level Security (RLS) for simple integration
+    console.log('🔧 \x1b[33m%s\x1b[0m', 'Step 4: Disabling Row Level Security (RLS)...');
     await client.query(`
       alter table public.job_applications disable row level security;
     `);
