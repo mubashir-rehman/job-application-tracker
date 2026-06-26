@@ -1,6 +1,7 @@
 {
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/" }],
   "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist",
   "builds": [
     { "src": "api/health.js", "use": "@vercel/node" },
     { "src": "api/jd/parse.js", "use": "@vercel/node" },
