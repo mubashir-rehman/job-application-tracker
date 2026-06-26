@@ -13,3 +13,8 @@ coverage/
 
 # Playwright MCP browser artifacts
 .playwright-mcp/
+
+# esbuild-generated API bundles (created by vercel-build)
+api/*.js
+api/**/*.js
+!api/**/*.ts

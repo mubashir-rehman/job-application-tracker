@@ -1,8 +1,11 @@
 {
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/" }],
-  "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "api/_lib/**"
-    }
-  }
+  "buildCommand": "npm run vercel-build",
+  "builds": [
+    { "src": "api/health.js", "use": "@vercel/node" },
+    { "src": "api/jd/parse.js", "use": "@vercel/node" },
+    { "src": "api/jd/score.js", "use": "@vercel/node" },
+    { "src": "api/resume/tailor.js", "use": "@vercel/node" },
+    { "src": "api/resume/import.js", "use": "@vercel/node" }
+  ]
 }

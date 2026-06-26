@@ -13,7 +13,8 @@
     "dev:all": "concurrently -n web,api -c blue,green \"npm:dev\" \"npm:dev:api\"",
     "db:migrate": "node scripts/migrate.js",
     "db:migrate:sql": "node scripts/migrate-sql.js",
-    "db:migrate:pipeline": "node scripts/migrate-sql.js supabase/migrations/20260626010000_pipeline_tables.sql"
+    "db:migrate:pipeline": "node scripts/migrate-sql.js supabase/migrations/20260626010000_pipeline_tables.sql",
+    "vercel-build": "vite build && bash scripts/build-api.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
