@@ -33,7 +33,7 @@ export default defineConfig(() => {
           // Precache the app shell; skip the large social-preview JPEGs and the
           // on-demand resume-import parsers (loaded lazily, cached at runtime).
           globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-          globIgnores: ['**/pdf-*.js', '**/pdf.worker*.mjs', '**/docx-*.js', '**/md-convert-*.js'],
+          globIgnores: ['**/pdf-*.js', '**/pdf.worker*.mjs', '**/docx-*.js', '**/docx-writer-*.js', '**/md-convert-*.js'],
           navigateFallback: '/index.html',
           cleanupOutdatedCaches: true,
         },
@@ -49,6 +49,7 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('pdfjs-dist')) return 'pdf';
             if (id.includes('node_modules/mammoth')) return 'docx';
+            if (id.includes('node_modules/docx/')) return 'docx-writer';
             if (id.includes('node_modules/turndown')) return 'md-convert';
           },
         },

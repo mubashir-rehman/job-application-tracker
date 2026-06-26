@@ -4,12 +4,13 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Wand2, Clock,
-  Copy, Download, Check, FileUp, Server, ShieldCheck,
+  Copy, Download, Check, FileUp, Server, ShieldCheck, Printer,
 } from 'lucide-react';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
+import { splitTailored, downloadDocx, printPdf } from '../lib/resumeRender';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
 import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
 
@@ -114,6 +115,23 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
     a.download = 'tailored-resume.md';
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  // Stage 5 — render the resume part only (not the Inventory/Honesty sections).
+  const downloadDocxResult = async () => {
+    try {
+      await downloadDocx(splitTailored(result).resumeMd);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not build the .docx');
+    }
+  };
+
+  const printPdfResult = () => {
+    try {
+      printPdf(splitTailored(result).resumeMd);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the print view');
+    }
   };
 
   const tabs = [
@@ -392,6 +410,12 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
                     <button onClick={downloadResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download resume as Markdown">
                       <Download className="w-3.5 h-3.5" /> .md
                     </button>
+                    <button onClick={downloadDocxResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download ATS-safe Word document" title="Single-column ATS-safe .docx">
+                      <FileText className="w-3.5 h-3.5 text-sky-400" /> .docx
+                    </button>
+                    <button onClick={printPdfResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Export as PDF via print" title="Designed PDF (print → Save as PDF)">
+                      <Printer className="w-3.5 h-3.5 text-indigo-400" /> PDF
+                    </button>
                   </div>
                 </div>
                 <pre className="px-5 py-4 overflow-auto text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-mono">{result}</pre>
@@ -405,7 +429,7 @@ export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | nul
                     'Paste the job description for this role',
                     'Pick the AI provider you have a key for',
                     'Generate — the CV is tailored to one lane, matching JD phrasing',
-                    'Copy or download the Markdown (ATS .docx / PDF export coming)',
+                    'Export: Markdown, single-column ATS .docx, or a designed PDF',
                   ].map((step, i) => (
                     <li key={i} className="flex items-start gap-3 text-xs text-slate-400">
                       <span className="w-5 h-5 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400 shrink-0 mt-0.5">{i + 1}</span>
