@@ -13,9 +13,12 @@ export interface ProviderCall {
 // configured custom endpoint, else null (callers can still run key-less paths).
 const ORDER: Provider[] = ['anthropic', 'openai', 'gemini', 'mimo'];
 
-export function resolveProviderConfig(): ProviderCall | null {
+// `prefer` moves a provider to the front — e.g. web-search research prefers a
+// Gemini key (the only grounded provider so far).
+export function resolveProviderConfig(prefer?: Provider): ProviderCall | null {
   const keys = loadApiKeys();
-  for (const id of ORDER) {
+  const order = prefer ? [prefer, ...ORDER.filter((p) => p !== prefer)] : ORDER;
+  for (const id of order) {
     if (keys[id]) return { provider: id, apiKey: keys[id]! };
   }
   if (keys.custom) {

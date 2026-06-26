@@ -74,11 +74,20 @@ export interface ParsedJdFields {
   techTags?: string[];
 }
 
+export interface JdResearch {
+  companyWebsite?: string;
+  summary?: string;
+  marketSalaryHint?: string;
+  sources?: { title: string; url: string }[];
+  unsupported?: boolean;
+}
+
 export interface ParseJdResult {
   fields: ParsedJdFields;
   gaps: string[];
   usedLLM: boolean;
   fetched: boolean;
+  research?: JdResearch | null;
 }
 
 export interface ParseJdParams {
@@ -89,6 +98,7 @@ export interface ParseJdParams {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  enrich?: boolean; // opt-in web-search company research
 }
 
 // Parse a job description (text or URL) into structured fields via the
@@ -97,7 +107,7 @@ export async function parseJd(p: ParseJdParams): Promise<ParseJdResult> {
   const headers = p.provider && p.apiKey
     ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
     : {};
-  return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl }, headers);
+  return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl, enrich: p.enrich }, headers);
 }
 
 export async function apiHealth(): Promise<{ ok: boolean }> {

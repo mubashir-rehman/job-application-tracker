@@ -14,7 +14,7 @@ export const maxDuration = 60;
 const handler: Handler = async (req, res) => {
   if (!requireMethod(req, res, 'POST')) return;
 
-  const { jdText, jdUrl } = req.body || {};
+  const { jdText, jdUrl, enrich } = req.body || {};
   if ((!jdText || typeof jdText !== 'string') && (!jdUrl || typeof jdUrl !== 'string')) {
     return fail(res, 400, 'Provide jdText or jdUrl');
   }
@@ -27,6 +27,7 @@ const handler: Handler = async (req, res) => {
       provider: getProvider(req),
       model: getModel(req),
       baseUrl: getBaseUrl(req),
+      enrich: enrich === true,
     });
     res.status(200).json(result);
   } catch (e) {

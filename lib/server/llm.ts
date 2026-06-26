@@ -40,6 +40,53 @@ export class LLMError extends Error {
   }
 }
 
+// Thrown by callLLMWithSearch for providers that don't (yet) have web grounding.
+export class SearchUnsupportedError extends LLMError {
+  constructor(provider: string) {
+    super(`Web search isn't supported for provider '${provider}' yet — use a Gemini key.`, 400);
+  }
+}
+
+export interface SearchResult {
+  text: string;
+  sources: { title: string; url: string }[];
+}
+
+// Grounded LLM call (web search). Currently backed by Gemini's Google Search
+// grounding; Anthropic/OpenAI web-search tools can slot in here later.
+export async function callLLMWithSearch(opts: LLMOptions): Promise<SearchResult> {
+  if (opts.provider === 'gemini') return geminiSearch(opts);
+  throw new SearchUnsupportedError(opts.provider);
+}
+
+async function geminiSearch({ apiKey, prompt, system, model, maxTokens }: LLMOptions): Promise<SearchResult> {
+  const m = model || DEFAULT_MODEL.gemini;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }],
+        // Disable "thinking" (2.5-flash) so the token budget goes to the grounded
+        // answer, not reasoning — otherwise a small budget truncates to empty.
+        generationConfig: { maxOutputTokens: maxTokens ?? 1500, thinkingConfig: { thinkingBudget: 0 } },
+      }),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new LLMError(data?.error?.message || `Gemini search error ${res.status}`, res.status);
+  const cand = data?.candidates?.[0];
+  const text = cand?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('') ?? '';
+  const chunks = cand?.groundingMetadata?.groundingChunks ?? [];
+  const sources = chunks
+    .map((c: any) => ({ title: c?.web?.title || '', url: c?.web?.uri || '' }))
+    .filter((s: { url: string }) => s.url);
+  return { text, sources };
+}
+
 export async function callLLM(opts: LLMOptions): Promise<string> {
   const { provider } = opts;
   if (provider === 'anthropic') return callAnthropic(opts);
