@@ -279,7 +279,7 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                 <Sparkles className="w-4 h-4 text-indigo-400" />
                 AI Provider
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PROVIDERS.map(p => {
                   const configured = !!apiKeys[p.id];
                   const selected   = selectedProvider === p.id;

@@ -12,7 +12,7 @@ export function getApiKey(req: ApiReq): string | null {
   return header(req, 'x-api-key')?.trim() || null;
 }
 
-const PROVIDERS: Provider[] = ['anthropic', 'openai', 'gemini'];
+const PROVIDERS: Provider[] = ['anthropic', 'openai', 'gemini', 'mimo'];
 
 // Provider from X-Provider header or body.provider; defaults to anthropic.
 export function getProvider(req: ApiReq): Provider {

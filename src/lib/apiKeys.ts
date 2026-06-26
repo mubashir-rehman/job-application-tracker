@@ -1,18 +1,20 @@
 // Canonical BYOK API-key model — shared by SettingsModal and ResumeBuilder.
 // Keys live in localStorage only and never touch Supabase or logs.
 
-export type Provider = 'openai' | 'anthropic' | 'gemini';
+export type Provider = 'openai' | 'anthropic' | 'gemini' | 'mimo';
 
 export interface ApiKeys {
   openai?: string;
   anthropic?: string;
   gemini?: string;
+  mimo?: string;
 }
 
 export const PROVIDERS: { id: Provider; label: string; placeholder: string; hint: string }[] = [
   { id: 'anthropic', label: 'Anthropic (Claude)', placeholder: 'sk-ant-api03-...', hint: 'claude.ai/settings' },
   { id: 'openai',    label: 'OpenAI (GPT-4o)',    placeholder: 'sk-proj-...',       hint: 'platform.openai.com' },
   { id: 'gemini',    label: 'Google Gemini',       placeholder: 'AIzaSy...',         hint: 'aistudio.google.com' },
+  { id: 'mimo',      label: 'Xiaomi MiMo',         placeholder: 'tp-...',            hint: 'xiaomimimo.com' },
 ];
 
 const STORAGE_KEY = 'hiretrack_api_keys';
