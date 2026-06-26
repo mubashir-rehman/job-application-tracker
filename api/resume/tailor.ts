@@ -1,6 +1,6 @@
-import { Handler } from '../../lib/server/types';
-import { callLLM, LLMError } from '../../lib/server/llm';
-import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
+import { Handler } from '../../lib/server/types.js';
+import { callLLM, LLMError } from '../../lib/server/llm.js';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http.js';
 
 // Vercel: reasoning-enabled tailoring can take longer than a plain completion.
 export const maxDuration = 60;

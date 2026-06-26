@@ -1,8 +1,8 @@
 // Stage 3 — match & positioning score. Deterministic-first like the JD parse
 // pipeline: keyword coverage (master CV vs JD) is computed key-less; an LLM
 // positioning verdict (skip/stretch/apply) refines it only when a key is present.
-import { Provider, callLLM } from '../llm';
-import { deterministicExtract } from '../jdExtract';
+import { Provider, callLLM } from '../llm.js';
+import { deterministicExtract } from '../jdExtract.js';
 
 export type Recommendation = 'skip' | 'stretch' | 'apply';
 

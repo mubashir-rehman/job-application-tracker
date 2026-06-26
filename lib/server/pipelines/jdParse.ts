@@ -8,10 +8,10 @@
 // The LLM node is skipped entirely for well-structured posts, and the whole
 // graph runs key-less (deterministic-only) when no API key is supplied.
 import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
-import { Provider, callLLM, callLLMWithSearch, SearchUnsupportedError } from '../llm';
-import { serperSearch } from '../search';
-import { fetchUrlText } from '../fetchText';
-import { deterministicExtract, JdFields } from '../jdExtract';
+import { Provider, callLLM, callLLMWithSearch, SearchUnsupportedError } from '../llm.js';
+import { serperSearch } from '../search.js';
+import { fetchUrlText } from '../fetchText.js';
+import { deterministicExtract, JdFields } from '../jdExtract.js';
 
 // Web-search research brief (opt-in `enrich`). Not written into the truth-only
 // form fields — it's supporting context the user can act on.

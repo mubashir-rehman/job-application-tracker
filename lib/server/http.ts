@@ -1,5 +1,5 @@
-import { ApiReq, ApiRes } from './types';
-import { Provider } from './llm';
+import { ApiReq, ApiRes } from './types.js';
+import { Provider } from './llm.js';
 
 // Read a header case-insensitively, returning the first value.
 function header(req: ApiReq, name: string): string | undefined {

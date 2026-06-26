@@ -1,8 +1,8 @@
-import { Handler } from '../../lib/server/types';
-import { LLMError } from '../../lib/server/llm';
-import { FetchTextError } from '../../lib/server/fetchText';
-import { runJdParse } from '../../lib/server/pipelines/jdParse';
-import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, getSearchKey, fail } from '../../lib/server/http';
+import { Handler } from '../../lib/server/types.js';
+import { LLMError } from '../../lib/server/llm.js';
+import { FetchTextError } from '../../lib/server/fetchText.js';
+import { runJdParse } from '../../lib/server/pipelines/jdParse.js';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, getSearchKey, fail } from '../../lib/server/http.js';
 
 // Vercel: allow up to 60s (Hobby cap). Deterministic-first means most requests
 // finish in ms; an LLM gap-fill still fits easily. Ignored by the Express dev server.
