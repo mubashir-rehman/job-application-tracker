@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, type PanInfo } from 'motion/react';
 import { JobApplication, WorkModelType } from '../types';
-import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase } from 'lucide-react';
+import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { extractTechTags, parseSalaryMidpoint, advanceApplicationStage } from '../lib/appUtils';
@@ -52,11 +52,13 @@ interface ApplicationTableProps {
   onDeleteApplication: (id: string, e?: React.MouseEvent) => void;
   /** Persist a mutated application (used by the mobile swipe-to-advance gesture). */
   onUpdateApplication?: (app: JobApplication) => void;
+  /** Open the Resume Builder preselected to tailor for this job. */
+  onTailor?: (jobId: string) => void;
   /** Force the compact card list (used when the detail pane narrows the list column). */
   compact?: boolean;
 }
 
-export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication, onUpdateApplication, compact = false }: ApplicationTableProps) {
+export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication, onUpdateApplication, onTailor, compact = false }: ApplicationTableProps) {
   const isMobile = usePlatform() === 'mobile';
   const [searchTerm, setSearchTerm] = useState('');
   const [workModelFilter, setWorkModelFilter] = useState<string>('All');
@@ -331,6 +333,15 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                         {/* Actions buttons */}
                         <td className="px-6 py-5.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            {onTailor && (
+                              <button
+                                onClick={() => onTailor(app.id)}
+                                className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all"
+                                title="Tailor a resume for this job"
+                              >
+                                <Wand2 className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => onSelectApplication(app)}
                               className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all"
@@ -410,6 +421,14 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                           Applied via {app.appliedVia}
                         </span>
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          {onTailor && (
+                            <button
+                              onClick={() => onTailor(app.id)}
+                              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                            >
+                              <Wand2 className="w-3.5 h-3.5" /> Tailor
+                            </button>
+                          )}
                           <button
                             onClick={() => onSelectApplication(app)}
                             className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold transition"

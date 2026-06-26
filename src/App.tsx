@@ -207,7 +207,6 @@ export default function App() {
             onUpdateApplication={handleUpdateApplication}
             tailored={tailoredItems}
             onRemoveTailored={removeTailored}
-            onTailor={handleTailor}
           />
         ) : undefined}
       >
@@ -250,6 +249,7 @@ export default function App() {
             onSelectApplication={setSelectedApplication}
             onDeleteApplication={handleDeleteApplication}
             onUpdateApplication={handleUpdateApplication}
+            onTailor={handleTailor}
             compact={paneOpen}
           />
         </div>
@@ -265,7 +265,6 @@ export default function App() {
         onUpdateApplication={handleUpdateApplication}
         tailored={tailoredItems}
         onRemoveTailored={removeTailored}
-        onTailor={handleTailor}
       />
 
       <NewApplicationModal

@@ -7,7 +7,7 @@ import { CompanyAvatar } from './common/CompanyAvatar';
 import {
   X, Save, ArrowRight, GitBranch, ThumbsUp, ThumbsDown,
   Quote, Clock, ChevronDown, Calendar, Link2, ExternalLink, Users,
-  Award, Star, Briefcase, FileText, Wand2, Copy, Download, Printer, Trash2,
+  Award, Star, Briefcase, FileText, Copy, Download, Printer, Trash2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,6 @@ interface DetailSlideOverProps {
   /** Tailored-resume history (lifted in App); the section shows entries for this job. */
   tailored?: TailoredResume[];
   onRemoveTailored?: (id: string) => void;
-  /** Jump to the Resume Builder preselected to tailor for this job. */
-  onTailor?: (jobId: string) => void;
 }
 
 // ── helpers ──────────────────────────────────────────────
@@ -61,7 +59,7 @@ function Section({ icon: Icon, title, hint, open, onToggle, children }: {
   );
 }
 
-export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false, tailored = [], onRemoveTailored, onTailor }: DetailSlideOverProps) {
+export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false, tailored = [], onRemoveTailored }: DetailSlideOverProps) {
   const [editedApp, setEditedApp] = useState<JobApplication | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({});
@@ -419,16 +417,8 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
             {/* TAILORED RESUMES (for this job) */}
             <Section icon={FileText} title="Tailored Resumes" hint={jobResumes.length ? `${jobResumes.length} saved` : undefined} open={openSections.resumes} onToggle={() => toggleSection('resumes')}>
-              {onTailor && (
-                <button
-                  onClick={() => onTailor(editedApp.id)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition"
-                >
-                  <Wand2 className="w-3.5 h-3.5" /> Tailor a resume for this job
-                </button>
-              )}
               {jobResumes.length === 0 ? (
-                <p className="text-[11px] text-slate-500">No tailored resumes yet for this job — generate one with your master CV.</p>
+                <p className="text-[11px] text-slate-500">No tailored resumes yet for this job. Use the <span className="font-semibold text-slate-400">Tailor</span> action on the row (or the Resume Builder) to generate one.</p>
               ) : (
                 <div className="space-y-2">
                   {jobResumes.map(t => (
