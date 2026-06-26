@@ -1,5 +1,5 @@
-import { Handler } from '../lib/server/types';
-import { requireMethod, getApiKey } from '../lib/server/http';
+import { Handler } from './_lib/types';
+import { requireMethod, getApiKey } from './_lib/http';
 
 // GET /api/health — liveness + whether a BYOK key was supplied on this request.
 // Never echoes the key itself.

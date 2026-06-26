@@ -1,7 +1,7 @@
-import { Handler } from '../../lib/server/types';
-import { LLMError } from '../../lib/server/llm';
-import { runScore } from '../../lib/server/pipelines/score';
-import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
+import { Handler } from '../_lib/types';
+import { LLMError } from '../_lib/llm';
+import { runScore } from '../_lib/pipelines/score';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../_lib/http';
 
 // Vercel: an LLM verdict fits well under the Hobby cap. Ignored by the dev server.
 export const maxDuration = 60;

@@ -1,6 +1,6 @@
-import { Handler } from '../../lib/server/types';
-import { callLLM, LLMError } from '../../lib/server/llm';
-import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
+import { Handler } from '../_lib/types';
+import { callLLM, LLMError } from '../_lib/llm';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../_lib/http';
 
 // Import-conversion prompt: turn messy extracted resume text (PDF/docx text
 // dump) into clean, well-structured Markdown WITHOUT changing the content.

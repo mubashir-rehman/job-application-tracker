@@ -6,7 +6,7 @@
 //   npm run dev:all      # vite + this server together
 import express from 'express';
 import type { Request, Response } from 'express';
-import { Handler } from '../lib/server/types';
+import { Handler } from '../api/_lib/types';
 
 import health from '../api/health';
 import tailor from '../api/resume/tailor';
