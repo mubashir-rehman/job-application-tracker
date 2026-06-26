@@ -31,6 +31,23 @@ export async function tailorResume(p: TailorParams): Promise<string> {
   return tailoredMd;
 }
 
+export interface ConvertParams {
+  provider: Provider;
+  apiKey: string;
+  rawText: string;
+  sourceFormat?: string;
+}
+
+// Clean/structure raw extracted resume text into Markdown via POST /api/resume/import.
+export async function convertResumeWithAI(p: ConvertParams): Promise<string> {
+  const { markdown } = await postJson<{ markdown: string }>(
+    '/api/resume/import',
+    { rawText: p.rawText, sourceFormat: p.sourceFormat },
+    { 'X-API-Key': p.apiKey, 'X-Provider': p.provider },
+  );
+  return markdown;
+}
+
 export async function apiHealth(): Promise<{ ok: boolean }> {
   const res = await fetch('/api/health');
   return res.json();

@@ -10,3 +10,6 @@ coverage/
 # Claude Code local state (may contain secrets / machine-specific config)
 .claude/settings.local.json
 .claude/worktrees/
+
+# Playwright MCP browser artifacts
+.playwright-mcp/

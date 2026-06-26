@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Eye, EyeOff, Wand2, Clock,
-  Copy, Download, Check,
+  Copy, Download, Check, FileUp,
 } from 'lucide-react';
 import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
-import { tailorResume } from '../lib/apiClient';
+import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
+import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
 
 export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
@@ -23,6 +24,13 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const [copied, setCopied]           = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab]     = useState<'generate' | 'keys' | 'history'>('generate');
+
+  // Master-CV import (upload pdf/docx/md/txt → markdown)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importMethod, setImportMethod] = useState<'library' | 'ai'>('library');
+  const [importing, setImporting]       = useState(false);
+  const [importError, setImportError]   = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ md: string; name: string } | null>(null);
 
   const selectedKeyExists = !!apiKeys[selectedProvider];
   const canGenerate = !!masterMd.trim() && !!jdText.trim() && selectedKeyExists && !isGenerating;
@@ -40,6 +48,34 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
     if (!key) return;
     saveKey(provider, key);
     setKeyInputs(prev => ({ ...prev, [provider]: '' }));
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setImportError(null);
+    setImporting(true);
+    try {
+      const { text, format } = await extractResumeText(file);
+      let md = text;
+      if (importMethod === 'ai') {
+        const key = apiKeys[selectedProvider];
+        if (!key) throw new Error(`Add a ${PROVIDERS.find(p => p.id === selectedProvider)?.label} key to use AI conversion.`);
+        md = await convertResumeWithAI({ provider: selectedProvider, apiKey: key, rawText: text, sourceFormat: format });
+      }
+      if (masterMd.trim()) setPendingImport({ md, name: file.name });
+      else setMasterMd(md);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const applyPendingImport = () => {
+    if (pendingImport) setMasterMd(pendingImport.md);
+    setPendingImport(null);
   };
 
   const handleGenerate = async () => {
@@ -145,6 +181,73 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                 </h3>
                 <span className="text-[10px] text-slate-600 font-mono">{masterStatusLabel}</span>
               </div>
+
+              {/* Import: upload pdf/docx/md/txt → markdown, via library or AI */}
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept={ACCEPT_ATTR} onChange={handleFileSelected} className="hidden" />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 disabled:opacity-50 text-[11px] font-bold text-slate-200 transition"
+                  >
+                    {importing ? (
+                      <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Converting…</>
+                    ) : (
+                      <><FileUp className="w-3.5 h-3.5 text-indigo-400" /> Upload file</>
+                    )}
+                  </button>
+
+                  <div className="flex gap-0.5 p-0.5 bg-slate-900/60 border border-slate-700 rounded-lg" role="group" aria-label="Conversion method">
+                    {([['library', 'Library'], ['ai', 'AI']] as const).map(([m, label]) => (
+                      <button
+                        key={m}
+                        onClick={() => setImportMethod(m)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
+                          importMethod === m ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        aria-pressed={importMethod === m}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <span className="text-[10px] text-slate-600 font-mono">PDF · DOCX · MD · TXT</span>
+                </div>
+
+                <p className="text-[10px] text-slate-500">
+                  {importMethod === 'library'
+                    ? 'Library: fast, on-device, no key. Best for DOCX/MD/TXT.'
+                    : `AI: cleans & structures the text using your ${PROVIDERS.find(p => p.id === selectedProvider)?.label} key. Best for messy PDFs.`}
+                </p>
+
+                {importMethod === 'ai' && !selectedKeyExists && (
+                  <p className="text-[11px] text-amber-400/80 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    No {PROVIDERS.find(p => p.id === selectedProvider)?.label} key — add it in the API Keys tab.
+                  </p>
+                )}
+
+                {importError && (
+                  <p className="text-[11px] text-rose-300 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {importError}
+                  </p>
+                )}
+
+                {pendingImport && (
+                  <div className="glass-panel p-3 rounded-xl border border-amber-900/40 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-300">
+                      Replace your current master CV with <span className="font-bold text-slate-100">{pendingImport.name}</span>?
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setPendingImport(null)} className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-400 hover:text-slate-200 transition">Cancel</button>
+                      <button onClick={applyPendingImport} className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold transition">Replace</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <textarea
                 value={masterMd}
                 onChange={e => setMasterMd(e.target.value)}

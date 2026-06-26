@@ -30,8 +30,10 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          // Precache the app shell; skip the large social-preview JPEGs.
+          // Precache the app shell; skip the large social-preview JPEGs and the
+          // on-demand resume-import parsers (loaded lazily, cached at runtime).
           globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+          globIgnores: ['**/pdf-*.js', '**/pdf.worker*.mjs', '**/docx-*.js', '**/md-convert-*.js'],
           navigateFallback: '/index.html',
           cleanupOutdatedCaches: true,
         },
@@ -39,6 +41,19 @@ export default defineConfig(() => {
         devOptions: {enabled: false},
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          // Stable names for the heavy, lazy-loaded resume-import parsers so the
+          // service worker can exclude them from the precache (see workbox.globIgnores).
+          manualChunks(id) {
+            if (id.includes('pdfjs-dist')) return 'pdf';
+            if (id.includes('node_modules/mammoth')) return 'docx';
+            if (id.includes('node_modules/turndown')) return 'md-convert';
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
