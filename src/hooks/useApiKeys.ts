@@ -21,7 +21,7 @@ export function useApiKeys() {
     persistApiKeys(updated);
   };
 
-  const hasAnyKey = PROVIDERS.some(p => !!apiKeys[p.id]);
+  const hasAnyKey = PROVIDERS.some(p => !!apiKeys[p.id]) || !!apiKeys.custom;
 
   return { apiKeys, saveKey, removeKey, hasAnyKey };
 }

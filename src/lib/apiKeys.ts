@@ -1,13 +1,14 @@
 // Canonical BYOK API-key model — shared by SettingsModal and ResumeBuilder.
 // Keys live in localStorage only and never touch Supabase or logs.
 
-export type Provider = 'openai' | 'anthropic' | 'gemini' | 'mimo';
+export type Provider = 'openai' | 'anthropic' | 'gemini' | 'mimo' | 'custom';
 
 export interface ApiKeys {
   openai?: string;
   anthropic?: string;
   gemini?: string;
   mimo?: string;
+  custom?: string;
 }
 
 export const PROVIDERS: { id: Provider; label: string; placeholder: string; hint: string }[] = [
@@ -30,7 +31,7 @@ export function persistApiKeys(keys: ApiKeys): void {
 
 export function hasAnyApiKey(): boolean {
   const keys = loadApiKeys();
-  return PROVIDERS.some(p => !!keys[p.id]);
+  return PROVIDERS.some(p => !!keys[p.id]) || !!keys.custom;
 }
 
 // Masked preview of a stored key, e.g. "sk-ant-a••••••••••••••••".

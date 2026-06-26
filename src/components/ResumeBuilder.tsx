@@ -4,13 +4,17 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Eye, EyeOff, Wand2, Clock,
-  Copy, Download, Check, FileUp,
+  Copy, Download, Check, FileUp, Server, ShieldCheck,
 } from 'lucide-react';
 import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
+import { CustomEndpoint, loadCustomEndpoint, saveCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
+
+const providerLabel = (id: Provider) =>
+  id === 'custom' ? 'Custom endpoint' : PROVIDERS.find(p => p.id === id)?.label ?? id;
 
 export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
@@ -18,6 +22,7 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const [keyInputs, setKeyInputs]     = useState<Partial<Record<Provider, string>>>({});
   const [showKeys, setShowKeys]       = useState<Partial<Record<Provider, boolean>>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
+  const [customCfg, setCustomCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
   const [jdText, setJdText]           = useState('');
   const [result, setResult]           = useState('');
   const [error, setError]             = useState<string | null>(null);
@@ -32,8 +37,28 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const [importError, setImportError]   = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<{ md: string; name: string } | null>(null);
 
-  const selectedKeyExists = !!apiKeys[selectedProvider];
+  // The custom (OpenAI-compatible) endpoint needs a key, base URL, and model.
+  const isCustom = selectedProvider === 'custom';
+  const customReady = !!apiKeys.custom && !!customCfg.baseUrl.trim() && !!customCfg.model.trim();
+  const selectedKeyExists = isCustom ? customReady : !!apiKeys[selectedProvider];
   const canGenerate = !!masterMd.trim() && !!jdText.trim() && selectedKeyExists && !isGenerating;
+
+  // BYOK call config for the active provider (adds model + base URL for custom).
+  const callConfig = (): { provider: Provider; apiKey: string; model?: string; baseUrl?: string } =>
+    isCustom
+      ? { provider: 'custom', apiKey: apiKeys.custom!, model: customCfg.model.trim(), baseUrl: normalizeBaseUrl(customCfg.baseUrl) }
+      : { provider: selectedProvider, apiKey: apiKeys[selectedProvider]! };
+
+  const updateCustom = (patch: Partial<CustomEndpoint>) => {
+    setCustomCfg(prev => {
+      const next = { ...prev, ...patch };
+      saveCustomEndpoint(next);
+      return next;
+    });
+  };
+
+  const fieldCls =
+    'w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition';
 
   const masterStatusLabel = !masterMd.trim()
     ? 'paste once'
@@ -60,9 +85,12 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
       const { text, format } = await extractResumeText(file);
       let md = text;
       if (importMethod === 'ai') {
-        const key = apiKeys[selectedProvider];
-        if (!key) throw new Error(`Add a ${PROVIDERS.find(p => p.id === selectedProvider)?.label} key to use AI conversion.`);
-        md = await convertResumeWithAI({ provider: selectedProvider, apiKey: key, rawText: text, sourceFormat: format });
+        if (!selectedKeyExists) {
+          throw new Error(isCustom
+            ? 'Configure the custom endpoint (base URL, model, key) in the API Keys tab.'
+            : `Add a ${providerLabel(selectedProvider)} key to use AI conversion.`);
+        }
+        md = await convertResumeWithAI({ ...callConfig(), rawText: text, sourceFormat: format });
       }
       if (masterMd.trim()) setPendingImport({ md, name: file.name });
       else setMasterMd(md);
@@ -84,12 +112,7 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
     setError(null);
     setResult('');
     try {
-      const md = await tailorResume({
-        provider: selectedProvider,
-        apiKey: apiKeys[selectedProvider]!,
-        masterMd,
-        jdText,
-      });
+      const md = await tailorResume({ ...callConfig(), masterMd, jdText });
       setResult(md);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed');
@@ -306,14 +329,39 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                     </button>
                   );
                 })}
+
+                {/* Custom OpenAI-compatible endpoint (freellmapi, OpenRouter, LM Studio, vLLM…) */}
+                <button
+                  onClick={() => setSelectedProvider('custom')}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    isCustom ? 'border-indigo-500 bg-indigo-600/10' : 'border-slate-700 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-xs font-bold flex items-center gap-1.5 ${isCustom ? 'text-slate-100' : 'text-slate-400'}`}>
+                      <Server className="w-3.5 h-3.5 shrink-0" /> Custom (OpenAI-compatible)
+                    </span>
+                    {customReady
+                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      : <span className="text-[9px] text-slate-600 font-mono">set up</span>
+                    }
+                  </div>
+                  {isCustom && <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />}
+                </button>
               </div>
+
               {!selectedKeyExists && (
                 <p className="text-[11px] text-amber-400/80 flex items-center gap-1.5">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  No key for {PROVIDERS.find(p => p.id === selectedProvider)?.label}.
-                  <button onClick={() => setActiveTab('keys')} className="underline underline-offset-2 hover:text-amber-300">Add it</button>
+                  {isCustom ? 'Custom endpoint not set up (base URL, model, key).' : `No key for ${providerLabel(selectedProvider)}.`}
+                  <button onClick={() => setActiveTab('keys')} className="underline underline-offset-2 hover:text-amber-300">{isCustom ? 'Set it up' : 'Add it'}</button>
                 </p>
               )}
+
+              <p className="text-[10px] text-slate-500 flex items-start gap-1.5 leading-relaxed">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400/70 shrink-0 mt-px" />
+                Your CV is sent only to the provider you choose. Paid Anthropic/OpenAI don't train on it; free tiers — including many behind a custom endpoint — may log or train on prompts, so avoid them for sensitive details.
+              </p>
             </div>
 
             {/* Generate button */}
@@ -463,6 +511,78 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
               </div>
             );
           })}
+
+          {/* Custom OpenAI-compatible endpoint */}
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-indigo-400" /> Custom (OpenAI-compatible)
+                </h3>
+                {customReady && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> Configured
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-slate-600 font-mono">freellmapi · OpenRouter · LM Studio · vLLM</span>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Any endpoint implementing <code className="font-mono text-indigo-400 bg-indigo-950/30 px-1 py-0.5 rounded">/v1/chat/completions</code>. Self-host{' '}
+              <a href="https://github.com/tashfeenahmed/freellmapi" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">freellmapi</a>{' '}
+              to stack many free tiers behind one URL. Your key & endpoint stay in your browser.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Base URL</span>
+                <input value={customCfg.baseUrl} onChange={e => updateCustom({ baseUrl: e.target.value })} placeholder="https://host/v1" className={`${fieldCls} font-mono`} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Model</span>
+                <input value={customCfg.model} onChange={e => updateCustom({ model: e.target.value })} placeholder="e.g. llama-3.3-70b" className={`${fieldCls} font-mono`} />
+              </label>
+            </div>
+
+            {apiKeys.custom ? (
+              <div className="flex items-center justify-between gap-2 bg-slate-900/60 rounded-lg px-3 py-2.5 border border-slate-800">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Key className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                  <span className="text-xs font-mono text-slate-500 truncate">{maskKey(apiKeys.custom, 6, 18)}</span>
+                </div>
+                <button onClick={() => removeKey('custom')} className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition shrink-0">Remove key</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showKeys.custom ? 'text' : 'password'}
+                    value={keyInputs.custom || ''}
+                    onChange={e => setKeyInputs(prev => ({ ...prev, custom: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && commitKey('custom')}
+                    placeholder="API key (any token your endpoint expects)"
+                    className={`${fieldCls} font-mono pr-10`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeys(prev => ({ ...prev, custom: !prev.custom }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition"
+                    aria-label={showKeys.custom ? 'Hide key' : 'Show key'}
+                  >
+                    {showKeys.custom ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <button
+                  onClick={() => commitKey('custom')}
+                  disabled={!keyInputs.custom?.trim()}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs transition shrink-0"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

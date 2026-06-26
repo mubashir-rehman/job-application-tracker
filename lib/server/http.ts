@@ -12,7 +12,7 @@ export function getApiKey(req: ApiReq): string | null {
   return header(req, 'x-api-key')?.trim() || null;
 }
 
-const PROVIDERS: Provider[] = ['anthropic', 'openai', 'gemini', 'mimo'];
+const PROVIDERS: Provider[] = ['anthropic', 'openai', 'gemini', 'mimo', 'custom'];
 
 // Provider from X-Provider header or body.provider; defaults to anthropic.
 export function getProvider(req: ApiReq): Provider {
@@ -22,6 +22,11 @@ export function getProvider(req: ApiReq): Provider {
 
 export function getModel(req: ApiReq): string | undefined {
   return header(req, 'x-model') || req.body?.model || undefined;
+}
+
+// Base URL for an OpenAI-compatible 'custom' provider (X-Base-URL or body.baseUrl).
+export function getBaseUrl(req: ApiReq): string | undefined {
+  return header(req, 'x-base-url') || req.body?.baseUrl || undefined;
 }
 
 export function fail(res: ApiRes, code: number, error: string, detail?: string): void {

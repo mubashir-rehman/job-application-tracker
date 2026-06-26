@@ -2,9 +2,10 @@
 // (passed per-request, never stored or logged). Uses the provider REST APIs via
 // fetch so there are no SDK dependencies — keeps the serverless bundle light.
 
-export type Provider = 'anthropic' | 'openai' | 'gemini' | 'mimo';
+export type Provider = 'anthropic' | 'openai' | 'gemini' | 'mimo' | 'custom';
 
 // Conservative, widely-available defaults; override per request with X-Model.
+// 'custom' has no default — base URL + model come from the request (BYOK).
 const DEFAULT_MODEL: Record<Provider, string> = {
   anthropic: 'claude-3-5-sonnet-latest',
   openai: 'gpt-4o',
@@ -12,9 +13,10 @@ const DEFAULT_MODEL: Record<Provider, string> = {
   // Xiaomi MiMo (OpenAI-compatible). Text flagship; other ids from /v1/models
   // include mimo-v2.5, mimo-v2-pro, mimo-v2-omni. Override per request via X-Model.
   mimo: 'mimo-v2.5-pro',
+  custom: '',
 };
 
-// Base URLs for OpenAI chat-completions-compatible providers.
+// Base URLs for built-in OpenAI chat-completions-compatible providers.
 const OPENAI_COMPATIBLE_BASE: Partial<Record<Provider, string>> = {
   openai: 'https://api.openai.com/v1',
   mimo: 'https://token-plan-sgp.xiaomimimo.com/v1',
@@ -27,6 +29,7 @@ export interface LLMOptions {
   system?: string;
   model?: string;
   maxTokens?: number;
+  baseUrl?: string; // required for provider 'custom' (OpenAI-compatible endpoint)
 }
 
 export class LLMError extends Error {
@@ -41,6 +44,12 @@ export async function callLLM(opts: LLMOptions): Promise<string> {
   const { provider } = opts;
   if (provider === 'anthropic') return callAnthropic(opts);
   if (provider === 'gemini') return callGemini(opts);
+  if (provider === 'custom') {
+    const base = opts.baseUrl?.trim().replace(/\/+$/, '');
+    if (!base) throw new LLMError('Custom provider requires a base URL', 400);
+    if (!opts.model) throw new LLMError('Custom provider requires a model', 400);
+    return callOpenAICompatible(opts, base, opts.model);
+  }
   const base = OPENAI_COMPATIBLE_BASE[provider];
   if (base) return callOpenAICompatible(opts, base, DEFAULT_MODEL[provider]);
   throw new LLMError(`Unknown provider: ${provider}`, 400);

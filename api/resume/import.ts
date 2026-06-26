@@ -1,6 +1,6 @@
 import { Handler } from '../../lib/server/types';
 import { callLLM, LLMError } from '../../lib/server/llm';
-import { requireMethod, getApiKey, getProvider, getModel, fail } from '../../lib/server/http';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
 
 // Import-conversion prompt: turn messy extracted resume text (PDF/docx text
 // dump) into clean, well-structured Markdown WITHOUT changing the content.
@@ -40,7 +40,7 @@ const handler: Handler = async (req, res) => {
   ].filter(Boolean).join('\n');
 
   try {
-    const markdown = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), maxTokens: 3000 });
+    const markdown = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 3000 });
     res.status(200).json({ markdown, provider });
   } catch (e) {
     const err = e as LLMError;

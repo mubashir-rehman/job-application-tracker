@@ -1,6 +1,6 @@
 import { Handler } from '../../lib/server/types';
 import { callLLM, LLMError } from '../../lib/server/llm';
-import { requireMethod, getApiKey, getProvider, getModel, fail } from '../../lib/server/http';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
 
 // Tailor system prompt — the downstream counterpart to docs/prompts/master-cv.md.
 // Selects ONE lane, matches exact JD phrasing, stays truthful, single-column.
@@ -38,7 +38,7 @@ const handler: Handler = async (req, res) => {
   ].join('\n');
 
   try {
-    const tailoredMd = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), maxTokens: 2500 });
+    const tailoredMd = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 2500 });
     res.status(200).json({ tailoredMd, provider });
   } catch (e) {
     const err = e as LLMError;
