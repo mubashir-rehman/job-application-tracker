@@ -1,21 +1,63 @@
 import React, { useState, useMemo } from 'react';
+import { motion, type PanInfo } from 'motion/react';
 import { JobApplication, WorkModelType } from '../types';
 import { Search, MapPin, DollarSign, Filter, Trash2, ArrowRight, Layers, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { extractTechTags, parseSalaryMidpoint } from '../lib/appUtils';
+import { extractTechTags, parseSalaryMidpoint, advanceApplicationStage } from '../lib/appUtils';
 import { statusColor } from '../lib/statusStyles';
 import { CompanyAvatar } from './common/CompanyAvatar';
+import { usePlatform } from '../hooks/usePlatform';
+
+const SWIPE_THRESHOLD = 110;
+
+// Mobile swipe wrapper: drag right to advance the pipeline, left to archive.
+// Action hints sit behind the card and are revealed as it slides.
+function SwipeableCard({ onAdvance, onArchive, children }: {
+  onAdvance: () => void;
+  onArchive: () => void;
+  children: React.ReactNode;
+}) {
+  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+    if (info.offset.x > SWIPE_THRESHOLD) onAdvance();
+    else if (info.offset.x < -SWIPE_THRESHOLD) onArchive();
+  };
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <div className="absolute inset-0 flex items-center justify-between px-6 pointer-events-none">
+        <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wide">
+          <ArrowRight className="w-4 h-4" /> Advance
+        </span>
+        <span className="flex items-center gap-1.5 text-rose-400 text-xs font-bold uppercase tracking-wide">
+          Archive <Trash2 className="w-4 h-4" />
+        </span>
+      </div>
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.4}
+        dragSnapToOrigin
+        onDragEnd={handleDragEnd}
+        className="relative touch-pan-y"
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
 
 interface ApplicationTableProps {
   applications: JobApplication[];
   onSelectApplication: (app: JobApplication) => void;
-  onDeleteApplication: (id: string, e: React.MouseEvent) => void;
+  onDeleteApplication: (id: string, e?: React.MouseEvent) => void;
+  /** Persist a mutated application (used by the mobile swipe-to-advance gesture). */
+  onUpdateApplication?: (app: JobApplication) => void;
   /** Force the compact card list (used when the detail pane narrows the list column). */
   compact?: boolean;
 }
 
-export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication, compact = false }: ApplicationTableProps) {
+export function ApplicationTable({ applications, onSelectApplication, onDeleteApplication, onUpdateApplication, compact = false }: ApplicationTableProps) {
+  const isMobile = usePlatform() === 'mobile';
   const [searchTerm, setSearchTerm] = useState('');
   const [workModelFilter, setWorkModelFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -319,12 +361,11 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                   const progressPercent = Math.round((completedPhases / totalPhases) * 100);
                   const statusInfo = statusColor(app.currentStatus);
 
-                  return (
+                  const card = (
                     <div
-                      key={app.id}
                       id={`card-${app.id}`}
                       onClick={() => onSelectApplication(app)}
-                      className="bg-slate-900/40 p-5 rounded-2xl border border-slate-800 hover:border-indigo-900/50 hover:bg-slate-900 active:bg-slate-950 transition-all cursor-pointer space-y-4"
+                      className="bg-slate-900 p-5 rounded-2xl border border-slate-800 hover:border-indigo-900/50 active:bg-slate-950 transition-all cursor-pointer space-y-4"
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
@@ -384,6 +425,20 @@ export function ApplicationTable({ applications, onSelectApplication, onDeleteAp
                         </div>
                       </div>
                     </div>
+                  );
+
+                  // On mobile, enable swipe-to-advance / swipe-to-archive.
+                  return (
+                    <React.Fragment key={app.id}>
+                      {isMobile && onUpdateApplication ? (
+                        <SwipeableCard
+                          onAdvance={() => onUpdateApplication(advanceApplicationStage(app))}
+                          onArchive={() => onDeleteApplication(app.id)}
+                        >
+                          {card}
+                        </SwipeableCard>
+                      ) : card}
+                    </React.Fragment>
                   );
                 })}
               </div>

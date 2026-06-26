@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { Search, Sun, Moon, Settings, User } from 'lucide-react';
+import { Search, Sun, Moon, Settings, User, RefreshCw } from 'lucide-react';
 import { Sidebar, ViewKey } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { Footer } from '../Footer';
+import { usePlatform } from '../../hooks/usePlatform';
+import { usePullToRefresh } from '../../hooks/usePullToRefresh';
+
+const THRESHOLD_HINT = 70; // px at which the pull indicator reaches full opacity
 
 interface AppShellProps {
   theme: 'light' | 'dark';
@@ -20,6 +24,8 @@ interface AppShellProps {
   onChangeView: (v: ViewKey) => void;
   /** Mobile FAB action (bottom nav). */
   onNewApplication: () => void;
+  /** Mobile pull-to-refresh handler (re-sync from cloud). */
+  onRefresh?: () => Promise<void> | void;
   topBar?: React.ReactNode;
   children: React.ReactNode;
   /** Inline detail pane (desktop/wide). When set, renders as a right-hand column. */
@@ -29,8 +35,11 @@ interface AppShellProps {
 export function AppShell({
   theme, onToggleTheme, user, isGuest, onSignOut, onSignIn,
   onOpenProfile, onOpenSettings, onOpenCommand, hasApiKey,
-  activeView, onChangeView, onNewApplication, topBar, children, detailPane,
+  activeView, onChangeView, onNewApplication, onRefresh, topBar, children, detailPane,
 }: AppShellProps) {
+  const mainRef = useRef<HTMLElement>(null);
+  const isMobile = usePlatform() === 'mobile';
+  const { pull, refreshing } = usePullToRefresh(mainRef, onRefresh ?? (() => {}), isMobile && !!onRefresh);
   return (
     <div className="ambient-bg h-screen flex overflow-hidden text-slate-100 font-sans">
       <Sidebar
@@ -83,7 +92,18 @@ export function AppShell({
         )}
 
         {/* Scrollable content region — extra bottom padding on mobile clears the fixed tab bar */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-28 md:pb-6 min-w-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-28 md:pb-6 min-w-0 overscroll-y-contain">
+          {/* Pull-to-refresh indicator (mobile) */}
+          <div
+            className="md:hidden flex items-end justify-center overflow-hidden"
+            style={{ height: pull, transition: refreshing || pull === 0 ? 'height 0.2s ease' : 'none' }}
+            aria-hidden={pull === 0}
+          >
+            <RefreshCw
+              className={`w-5 h-5 text-indigo-400 mb-2 ${refreshing ? 'animate-spin' : ''}`}
+              style={{ opacity: Math.min(1, pull / THRESHOLD_HINT), transform: refreshing ? undefined : `rotate(${pull * 3}deg)` }}
+            />
+          </div>
           {children}
         </main>
 

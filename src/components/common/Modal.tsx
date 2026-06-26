@@ -1,10 +1,13 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { Drawer } from 'vaul';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { usePlatform } from '../../hooks/usePlatform';
 
-// Overlay + positioning + Escape/backdrop close. The caller supplies the
-// panel as children (keeping its own size/radius), and stops propagation
-// itself via the panel — handled here so children don't have to.
+// Adaptive modal chrome: a vaul bottom-sheet on mobile (drag-to-dismiss,
+// safe-area aware) and a centered/positioned overlay on desktop. The caller
+// supplies the panel as children; on mobile its `max-w-*` yields to full
+// width, so the same panel reads correctly as a sheet.
 export function Modal({ open, onClose, placement = 'center', closeOnBackdrop = true, z = 'z-50', children }: {
   open: boolean;
   onClose: () => void;
@@ -13,15 +16,32 @@ export function Modal({ open, onClose, placement = 'center', closeOnBackdrop = t
   z?: string;
   children: React.ReactNode;
 }) {
-  useEscapeKey(open, onClose);
+  const platform = usePlatform();
+  // On mobile vaul owns Escape/overlay dismissal; only wire our handler on desktop.
+  useEscapeKey(open && platform === 'desktop', onClose);
   if (!open) return null;
 
-  const pos = placement === 'top-right'
-    ? 'items-start justify-end pt-16'
-    : 'items-center justify-center';
+  if (platform === 'mobile') {
+    return (
+      <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-[59] bg-slate-950/60 backdrop-blur-sm" />
+          <Drawer.Content
+            className="fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center outline-none focus:outline-none"
+            style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+          >
+            <Drawer.Title className="sr-only">Dialog</Drawer.Title>
+            <div className="mx-auto mt-2 mb-2 h-1.5 w-10 shrink-0 rounded-full bg-slate-600" aria-hidden />
+            {children}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    );
+  }
 
-  // The backdrop is an absolutely-positioned sibling; panels passed as
+  // Desktop: backdrop is an absolutely-positioned sibling; panels passed as
   // children must include `relative` so they stack above it.
+  const pos = placement === 'top-right' ? 'items-start justify-end pt-16' : 'items-center justify-center';
   return (
     <div className={`fixed inset-0 ${z} flex ${pos} p-4`}>
       <div

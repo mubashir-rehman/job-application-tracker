@@ -25,7 +25,7 @@ import { useEscapeKey } from './hooks/useEscapeKey';
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const { user, isGuest, signOut, signIn, enterGuestMode } = useAuth();
-  const { applications, isLoading, dbError, addApplication, updateApplication, deleteApplication, exportData } = useApplications(user);
+  const { applications, isLoading, dbError, addApplication, updateApplication, deleteApplication, refreshFromCloud, exportData } = useApplications(user);
 
   // UI-only state (stays in App)
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
@@ -75,8 +75,8 @@ export default function App() {
     updateApplication(updatedApp, showToast);
     setSelectedApplication(prev => prev?.id === updatedApp.id ? updatedApp : prev);
   };
-  const handleDeleteApplication = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteApplication = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const app = applications.find(a => a.id === id);
     if (app) setAppToDelete(app);
   };
@@ -159,6 +159,7 @@ export default function App() {
         activeView={activeView}
         onChangeView={setActiveView}
         onNewApplication={() => setIsNewAppOpen(true)}
+        onRefresh={refreshFromCloud}
         topBar={topBar}
         detailPane={paneOpen ? (
           <DetailSlideOver
@@ -207,6 +208,7 @@ export default function App() {
             applications={applications}
             onSelectApplication={setSelectedApplication}
             onDeleteApplication={handleDeleteApplication}
+            onUpdateApplication={handleUpdateApplication}
             compact={paneOpen}
           />
         </div>

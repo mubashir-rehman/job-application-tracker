@@ -24,6 +24,25 @@ export function deriveCurrentStatus(phases: InterviewPhase[]): string {
   return 'Application Submitted';
 }
 
+// Advance an application to its next pipeline stage — completes the active
+// phase and activates the next (or activates phase 0 if nothing is active yet).
+// Returns a new object with a freshly derived currentStatus; never mutates.
+export function advanceApplicationStage(app: JobApplication): JobApplication {
+  const phases = app.phases.map(p => ({ ...p }));
+  const activeIndex = phases.findIndex(p => p.status === 'active');
+
+  if (activeIndex === -1) {
+    // Nothing active yet (e.g. a saved role) — start the pipeline.
+    if (phases[0]) phases[0].status = 'active';
+  } else {
+    phases[activeIndex].status = 'completed';
+    if (!phases[activeIndex].date) phases[activeIndex].date = new Date().toISOString().slice(0, 10);
+    if (activeIndex + 1 < phases.length) phases[activeIndex + 1].status = 'active';
+  }
+
+  return { ...app, phases, currentStatus: deriveCurrentStatus(phases) };
+}
+
 // Parse salary range string into a numeric midpoint for sorting/averaging
 // Handles: "$190k-$240k", "$190,000-$240,000", "190000-240000"
 export function parseSalaryMidpoint(range: string): number | null {
