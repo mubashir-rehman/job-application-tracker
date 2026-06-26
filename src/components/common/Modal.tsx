@@ -19,9 +19,13 @@ export function Modal({ open, onClose, placement = 'center', closeOnBackdrop = t
   const platform = usePlatform();
   // On mobile vaul owns Escape/overlay dismissal; only wire our handler on desktop.
   useEscapeKey(open && platform === 'desktop', onClose);
-  if (!open) return null;
 
   if (platform === 'mobile') {
+    // Keep the vaul Drawer mounted across open/close so it observes the
+    // closed→open transition and moves focus into the sheet. Mounting it
+    // already-open skips Radix's focus management, leaving focus on the
+    // trigger button while the sheet hides the page via aria-hidden — which
+    // trips the browser's "aria-hidden on a focused element" a11y warning.
     return (
       <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }}>
         <Drawer.Portal>
@@ -40,7 +44,9 @@ export function Modal({ open, onClose, placement = 'center', closeOnBackdrop = t
   }
 
   // Desktop: backdrop is an absolutely-positioned sibling; panels passed as
-  // children must include `relative` so they stack above it.
+  // children must include `relative` so they stack above it. (The vaul branch
+  // above stays mounted; only the plain-div desktop path needs this guard.)
+  if (!open) return null;
   const pos = placement === 'top-right' ? 'items-start justify-end pt-16' : 'items-center justify-center';
   return (
     <div className={`fixed inset-0 ${z} flex ${pos} p-4`}>
