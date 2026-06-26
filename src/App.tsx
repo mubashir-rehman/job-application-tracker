@@ -158,6 +158,7 @@ export default function App() {
         hasApiKey={hasAnyApiKey()}
         activeView={activeView}
         onChangeView={setActiveView}
+        onNewApplication={() => setIsNewAppOpen(true)}
         topBar={topBar}
         detailPane={paneOpen ? (
           <DetailSlideOver

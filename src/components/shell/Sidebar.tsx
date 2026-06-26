@@ -7,17 +7,20 @@ import {
 
 export type ViewKey = 'applications' | 'resume' | 'knowledge';
 
-interface NavItem {
+export interface NavItem {
   key: ViewKey;
   label: string;
+  shortLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   soon?: boolean;
 }
 
-const NAV: NavItem[] = [
-  { key: 'applications', label: 'Applications',  icon: LayoutGrid },
-  { key: 'resume',       label: 'Resume Builder', icon: Sparkles,     soon: true },
-  { key: 'knowledge',    label: 'Knowledge Bank', icon: BrainCircuit, soon: true },
+// Single source of truth for the primary views — shared by Sidebar (desktop)
+// and BottomNav (mobile).
+export const NAV: NavItem[] = [
+  { key: 'applications', label: 'Applications',  shortLabel: 'Apps',      icon: LayoutGrid },
+  { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles,     soon: true },
+  { key: 'knowledge',    label: 'Knowledge Bank', shortLabel: 'Knowledge', icon: BrainCircuit, soon: true },
 ];
 
 interface SidebarProps {

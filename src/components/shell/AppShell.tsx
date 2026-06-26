@@ -2,6 +2,7 @@ import React from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { Search, Sun, Moon, Settings, User } from 'lucide-react';
 import { Sidebar, ViewKey } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { Footer } from '../Footer';
 
 interface AppShellProps {
@@ -17,6 +18,8 @@ interface AppShellProps {
   hasApiKey: boolean;
   activeView: ViewKey;
   onChangeView: (v: ViewKey) => void;
+  /** Mobile FAB action (bottom nav). */
+  onNewApplication: () => void;
   topBar?: React.ReactNode;
   children: React.ReactNode;
   /** Inline detail pane (desktop/wide). When set, renders as a right-hand column. */
@@ -26,7 +29,7 @@ interface AppShellProps {
 export function AppShell({
   theme, onToggleTheme, user, isGuest, onSignOut, onSignIn,
   onOpenProfile, onOpenSettings, onOpenCommand, hasApiKey,
-  activeView, onChangeView, topBar, children, detailPane,
+  activeView, onChangeView, onNewApplication, topBar, children, detailPane,
 }: AppShellProps) {
   return (
     <div className="ambient-bg h-screen flex overflow-hidden text-slate-100 font-sans">
@@ -47,7 +50,10 @@ export function AppShell({
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile top strip (sidebar is hidden < md) */}
-        <div className="md:hidden flex items-center justify-between h-14 px-4 shrink-0 border-b border-slate-800/70 bg-slate-900/70 backdrop-blur-xl">
+        <div
+          className="md:hidden flex items-center justify-between h-14 px-4 shrink-0 border-b border-slate-800/70 bg-slate-900/70 backdrop-blur-xl"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center font-black text-white text-[10px] font-display shrink-0">HT</div>
             <span className="text-sm font-black font-display text-slate-100">HireTrack<span className="text-indigo-400">.pro</span></span>
@@ -76,13 +82,13 @@ export function AppShell({
           </div>
         )}
 
-        {/* Scrollable content region */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 min-w-0">
+        {/* Scrollable content region — extra bottom padding on mobile clears the fixed tab bar */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-28 md:pb-6 min-w-0">
           {children}
         </main>
 
-        {/* Persistent sticky footer */}
-        <div className="shrink-0 border-t border-slate-800/70 bg-slate-900/40 backdrop-blur-md px-4 md:px-8 py-2.5">
+        {/* Persistent sticky footer (desktop only — mobile uses the bottom tab bar) */}
+        <div className="hidden md:block shrink-0 border-t border-slate-800/70 bg-slate-900/40 backdrop-blur-md px-8 py-2.5">
           <Footer compact />
         </div>
       </div>
@@ -93,6 +99,9 @@ export function AppShell({
           {detailPane}
         </aside>
       )}
+
+      {/* Mobile bottom navigation + FAB */}
+      <BottomNav activeView={activeView} onChangeView={onChangeView} onNewApplication={onNewApplication} />
     </div>
   );
 }
