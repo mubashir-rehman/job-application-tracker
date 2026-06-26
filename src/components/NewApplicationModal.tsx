@@ -8,6 +8,7 @@ import { Modal, ModalHeader } from './common/Modal';
 import { Check, ChevronDown, Calendar, Sparkles, AlertCircle, Globe } from 'lucide-react';
 import { parseJd, ParsedJdFields, JdResearch } from '../lib/apiClient';
 import { resolveProviderConfig } from '../lib/providerConfig';
+import { loadSearchKey } from '../lib/searchConfig';
 
 interface NewApplicationModalProps {
   isOpen: boolean;
@@ -114,14 +115,19 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
     }
   };
 
-  // Opt-in web-search research on the company (prefers a Gemini key — the only
-  // grounded provider so far). Sends a minimal labeled text so the pipeline goes
-  // straight to the enrich node (no extra gap-fill LLM call).
+  // Opt-in company research. Prefers a serper.dev search key (no LLM tokens);
+  // falls back to a Gemini key (grounding). Sends a minimal labeled text so the
+  // pipeline goes straight to the enrich node (no extra gap-fill LLM call).
   const handleResearch = async () => {
     const company = companyName.trim();
     if (!company) return;
-    const cfg = resolveProviderConfig('gemini');
-    if (!cfg) { setResearchError('Add an AI key (Gemini recommended) in “AI Keys” to research the company.'); return; }
+    const searchKey = loadSearchKey();
+    const geminiCfg = resolveProviderConfig('gemini');
+    const hasGemini = geminiCfg?.provider === 'gemini';
+    if (!searchKey && !hasGemini) {
+      setResearchError('Add a serper.dev search key or a Gemini key in “API Keys” to research the company.');
+      return;
+    }
     setResearching(true);
     setResearchError(null);
     setResearch(null);
@@ -129,7 +135,12 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
       + (targetRole.trim() ? `\nRole: ${targetRole.trim()}` : '')
       + (salaryRange.trim() ? `\nSalary: ${salaryRange.trim()}` : '');
     try {
-      const res = await parseJd({ jdText, enrich: true, ...cfg });
+      const res = await parseJd({
+        jdText,
+        enrich: true,
+        searchKey: searchKey || undefined,
+        ...(hasGemini ? geminiCfg : {}),
+      });
       setResearch(res.research || { unsupported: true });
     } catch (e) {
       setResearchError(e instanceof Error ? e.message : 'Research failed');
@@ -275,13 +286,15 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   <p className="text-[11px] text-rose-300 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" /> {researchError}</p>
                 )}
                 {research && (research.unsupported ? (
-                  <p className="text-[11px] text-amber-400/80">Company research needs a Gemini key (web-search grounding). Add one in “AI Keys”.</p>
+                  <p className="text-[11px] text-amber-400/80">Company research needs a serper.dev search key or a Gemini key. Add one in “API Keys”.</p>
+                ) : research.error ? (
+                  <p className="text-[11px] text-rose-300 flex items-start gap-1.5"><AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" /> Search failed: {research.error}</p>
                 ) : (
                   <div className="glass-panel rounded-xl border border-slate-800 px-3 py-2.5 space-y-1.5 text-[11px]">
                     <div className="flex items-center gap-1.5 text-slate-300">
                       <Globe className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                       <span className="font-semibold text-slate-100">Company research</span>
-                      <span className="ml-auto text-[9px] font-mono text-slate-600">web search</span>
+                      <span className="ml-auto text-[9px] font-mono text-slate-600">{research.via === 'serper' ? 'serper.dev' : research.via === 'gemini' ? 'gemini search' : 'web search'}</span>
                     </div>
                     {research.summary && <p className="text-slate-400 leading-relaxed">{research.summary}</p>}
                     {research.companyWebsite && (

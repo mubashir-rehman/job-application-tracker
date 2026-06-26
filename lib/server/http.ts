@@ -29,6 +29,11 @@ export function getBaseUrl(req: ApiReq): string | undefined {
   return header(req, 'x-base-url') || req.body?.baseUrl || undefined;
 }
 
+// Dedicated web-search key (serper.dev) — X-Search-Key. Never persisted/logged.
+export function getSearchKey(req: ApiReq): string | undefined {
+  return header(req, 'x-search-key') || req.body?.searchKey || undefined;
+}
+
 export function fail(res: ApiRes, code: number, error: string, detail?: string): void {
   res.status(code).json(detail ? { error, detail } : { error });
 }

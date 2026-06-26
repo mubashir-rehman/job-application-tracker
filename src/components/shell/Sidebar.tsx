@@ -21,7 +21,7 @@ export const NAV: NavItem[] = [
   { key: 'applications', label: 'Applications',  shortLabel: 'Apps',      icon: LayoutGrid },
   { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles },
   { key: 'knowledge',    label: 'Knowledge Bank', shortLabel: 'Knowledge', icon: BrainCircuit },
-  { key: 'keys',         label: 'AI Keys',        shortLabel: 'Keys',      icon: Key },
+  { key: 'keys',         label: 'API Keys',       shortLabel: 'Keys',      icon: Key },
 ];
 
 interface SidebarProps {

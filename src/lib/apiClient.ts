@@ -79,7 +79,9 @@ export interface JdResearch {
   summary?: string;
   marketSalaryHint?: string;
   sources?: { title: string; url: string }[];
+  via?: 'serper' | 'gemini';
   unsupported?: boolean;
+  error?: string;
 }
 
 export interface ParseJdResult {
@@ -99,14 +101,16 @@ export interface ParseJdParams {
   model?: string;
   baseUrl?: string;
   enrich?: boolean; // opt-in web-search company research
+  searchKey?: string; // serper.dev key — preferred search backend
 }
 
 // Parse a job description (text or URL) into structured fields via the
 // deterministic-first LangGraph pipeline. Works with or without a key.
 export async function parseJd(p: ParseJdParams): Promise<ParseJdResult> {
-  const headers = p.provider && p.apiKey
+  const headers: Record<string, string> = p.provider && p.apiKey
     ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
     : {};
+  if (p.searchKey) headers['X-Search-Key'] = p.searchKey;
   return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl, enrich: p.enrich }, headers);
 }
 

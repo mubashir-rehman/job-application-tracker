@@ -9,6 +9,7 @@
 // graph runs key-less (deterministic-only) when no API key is supplied.
 import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
 import { Provider, callLLM, callLLMWithSearch, SearchUnsupportedError } from '../llm';
+import { serperSearch } from '../search';
 import { fetchUrlText } from '../fetchText';
 import { deterministicExtract, JdFields } from '../jdExtract';
 
@@ -19,7 +20,9 @@ export interface JdResearch {
   summary?: string;
   marketSalaryHint?: string;
   sources?: { title: string; url: string }[];
-  unsupported?: boolean; // provider has no web search yet
+  via?: 'serper' | 'gemini'; // which search backend produced it
+  unsupported?: boolean;      // no search key and no grounded provider
+  error?: string;            // search failed (e.g. out of credits)
 }
 
 // The fields the LLM may fill (provider's own keys excluded — those are inferred).
@@ -56,6 +59,7 @@ const State = Annotation.Root({
   usedLLM: Annotation<boolean>(),
   gaps: Annotation<string[]>({ reducer: (_a, b) => b, default: () => [] }),
   enrich: Annotation<boolean | undefined>(),
+  searchKey: Annotation<string | undefined>(),
   research: Annotation<JdResearch | null>({ reducer: (_a, b) => b, default: () => null }),
 });
 type S = typeof State.State;
@@ -129,13 +133,66 @@ function finalize(state: S): Partial<S> {
   return { gaps };
 }
 
-// Opt-in web-search research on the company (Gemini grounding). Never writes the
-// truth-only form fields — produces a separate brief + a market-salary hint when
-// no salary was posted. Sources are real grounded URLs (the user still verifies).
+// Opt-in company research. Prefers serper.dev (a dedicated search API — no LLM
+// tokens, just search credits); falls back to Gemini grounding. Never writes the
+// truth-only form fields; sources are real URLs the user still verifies.
 async function enrichNode(state: S): Promise<Partial<S>> {
   const company = state.fields.companyName;
-  if (!company || !state.apiKey) return {};
+  if (!company) return {};
+  if (state.searchKey) return { research: await enrichViaSerper(state, company) };
+  if (state.apiKey) return { research: await enrichViaGemini(state, company) };
+  return { research: { unsupported: true } };
+}
 
+// serper.dev: knowledgeGraph → website + summary; organic → sources; one extra
+// search for a market range only when no salary was posted.
+// Aggregator/social hosts that are never the company's own homepage.
+const NON_HOMEPAGE = /(?:^|\.)(?:linkedin|x|twitter|facebook|instagram|wikipedia|glassdoor|indeed|crunchbase|youtube|github|medium|bloomberg|reddit)\.[a-z.]+$/i;
+
+function homepageFromOrganic(organic?: { link?: string }[]): string | undefined {
+  for (const o of organic || []) {
+    if (!o.link) continue;
+    try {
+      const host = new URL(o.link).hostname.replace(/^www\./, '');
+      if (!NON_HOMEPAGE.test(host)) return `https://${host}`;
+    } catch { /* skip malformed URL */ }
+  }
+  return undefined;
+}
+
+async function enrichViaSerper(state: S, company: string): Promise<JdResearch> {
+  const role = state.fields.targetRole;
+  try {
+    const main = await serperSearch(state.searchKey!, company);
+    const kg = main.knowledgeGraph || {};
+    const sources = (main.organic || [])
+      .slice(0, 4)
+      .map((o) => ({ title: o.title || '', url: o.link || '' }))
+      .filter((s) => s.url);
+
+    let marketSalaryHint: string | undefined;
+    if (!state.fields.salaryRange && role) {
+      try {
+        const sal = await serperSearch(state.searchKey!, `${role} salary at ${company}`, 4);
+        const snip = sal.answerBox?.answer || sal.answerBox?.snippet || sal.organic?.[0]?.snippet;
+        if (snip) marketSalaryHint = String(snip).slice(0, 220);
+        (sal.organic || []).slice(0, 2).forEach((o) => { if (o.link) sources.push({ title: o.title || '', url: o.link }); });
+      } catch { /* salary lookup is best-effort */ }
+    }
+
+    return {
+      via: 'serper',
+      companyWebsite: kg.website || homepageFromOrganic(main.organic) || undefined,
+      summary: kg.description || undefined,
+      marketSalaryHint,
+      sources: sources.slice(0, 5),
+    };
+  } catch (e) {
+    return { via: 'serper', error: (e as Error).message };
+  }
+}
+
+async function enrichViaGemini(state: S, company: string): Promise<JdResearch> {
   const prompt = [
     `Research the company "${company}"${state.fields.targetRole ? ` (hiring a ${state.fields.targetRole})` : ''} using web search.`,
     `Return ONLY a JSON object: {"companyWebsite": string|null, "summary": string|null, "marketSalaryHint": string|null}`,
@@ -150,28 +207,28 @@ async function enrichNode(state: S): Promise<Partial<S>> {
   try {
     const { text, sources } = await callLLMWithSearch({
       provider: state.provider || 'gemini',
-      apiKey: state.apiKey,
+      apiKey: state.apiKey!,
       prompt,
       model: state.model,
       maxTokens: 700,
     });
     const parsed = safeJson(text) || {};
     return {
-      research: {
-        companyWebsite: parsed.companyWebsite || undefined,
-        summary: parsed.summary || undefined,
-        marketSalaryHint: parsed.marketSalaryHint || undefined,
-        sources: sources.slice(0, 5),
-      },
+      via: 'gemini',
+      companyWebsite: parsed.companyWebsite || undefined,
+      summary: parsed.summary || undefined,
+      marketSalaryHint: parsed.marketSalaryHint || undefined,
+      sources: sources.slice(0, 5),
     };
   } catch (e) {
-    if (e instanceof SearchUnsupportedError) return { research: { unsupported: true } };
-    throw e;
+    if (e instanceof SearchUnsupportedError) return { unsupported: true };
+    return { via: 'gemini', error: (e as Error).message };
   }
 }
 
 function enrichRoute(state: S): 'enrich' | 'end' {
-  return state.enrich && state.apiKey && state.fields.companyName ? 'enrich' : 'end';
+  const canSearch = !!state.searchKey || !!state.apiKey;
+  return state.enrich && canSearch && state.fields.companyName ? 'enrich' : 'end';
 }
 
 const graph = new StateGraph(State)
@@ -196,6 +253,7 @@ export interface JdParseInput {
   model?: string;
   baseUrl?: string;
   enrich?: boolean; // opt-in web-search research on the company
+  searchKey?: string; // serper.dev key — preferred search backend when present
 }
 
 export interface JdParseResult {

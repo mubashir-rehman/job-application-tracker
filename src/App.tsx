@@ -104,7 +104,7 @@ export default function App() {
     { id: 'analytics', label: showTelemetry ? 'Hide Analytics' : 'Show Analytics', icon: showTelemetry ? EyeOff : Eye, run: () => setShowTelemetry(v => !v) },
     { id: 'theme',     label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, icon: theme === 'dark' ? Sun : Moon, run: toggleTheme },
     { id: 'export',    label: 'Export applications as JSON',                       icon: Download,                     run: () => exportData(applications) },
-    { id: 'keys',      label: 'Manage AI provider keys',                           icon: Key,                          run: () => setActiveView('keys') },
+    { id: 'keys',      label: 'Manage API keys (AI & search)',                     icon: Key,                          run: () => setActiveView('keys') },
     { id: 'settings',  label: 'Open Settings (master resume URL)',                 icon: Settings,                     run: () => setIsSettingsOpen(true) },
     { id: 'profile',   label: 'Open Profile',                                      icon: User,                         run: () => setIsProfileOpen(true) },
   ];
@@ -161,7 +161,7 @@ export default function App() {
   );
 
   const keysTopBar = (
-    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">AI Keys</h1>
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">API Keys</h1>
   );
 
   const topBar = isResume ? resumeTopBar : isKnowledge ? knowledgeTopBar : isKeys ? keysTopBar : appsTopBar;

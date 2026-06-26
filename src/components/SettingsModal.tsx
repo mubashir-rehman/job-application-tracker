@@ -43,7 +43,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           <div className="flex items-start gap-2.5 bg-slate-950/40 p-3 rounded-lg border border-slate-800">
             <Key className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              AI provider keys now live in the <span className="font-bold text-slate-200">AI Keys</span> section in the sidebar.
+              AI provider & search keys now live in the <span className="font-bold text-slate-200">API Keys</span> section in the sidebar.
             </p>
           </div>
 

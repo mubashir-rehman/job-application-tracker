@@ -2,7 +2,7 @@ import { Handler } from '../../lib/server/types';
 import { LLMError } from '../../lib/server/llm';
 import { FetchTextError } from '../../lib/server/fetchText';
 import { runJdParse } from '../../lib/server/pipelines/jdParse';
-import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http';
+import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, getSearchKey, fail } from '../../lib/server/http';
 
 // Vercel: allow up to 60s (Hobby cap). Deterministic-first means most requests
 // finish in ms; an LLM gap-fill still fits easily. Ignored by the Express dev server.
@@ -28,6 +28,7 @@ const handler: Handler = async (req, res) => {
       model: getModel(req),
       baseUrl: getBaseUrl(req),
       enrich: enrich === true,
+      searchKey: getSearchKey(req),
     });
     res.status(200).json(result);
   } catch (e) {
