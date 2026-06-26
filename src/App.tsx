@@ -5,6 +5,7 @@ import { StatsGrid } from './components/StatsGrid';
 import { PerformanceTelemetry } from './components/PerformanceTelemetry';
 import { ApplicationTable } from './components/ApplicationTable';
 import { ResumeBuilder } from './components/ResumeBuilder';
+import { KnowledgeBank } from './components/KnowledgeBank';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
 import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, EyeOff, Sun, Moon, Settings, User } from 'lucide-react';
@@ -107,6 +108,8 @@ export default function App() {
   ];
 
   const isResume = activeView === 'resume';
+  const isKnowledge = activeView === 'knowledge';
+  const isApplications = activeView === 'applications';
 
   const appsTopBar = (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -150,6 +153,12 @@ export default function App() {
     <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Resume Builder</h1>
   );
 
+  const knowledgeTopBar = (
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Knowledge Bank</h1>
+  );
+
+  const topBar = isResume ? resumeTopBar : isKnowledge ? knowledgeTopBar : appsTopBar;
+
   return (
     <>
       <AppShell
@@ -167,8 +176,8 @@ export default function App() {
         onChangeView={setActiveView}
         onNewApplication={() => setIsNewAppOpen(true)}
         onRefresh={refreshFromCloud}
-        topBar={isResume ? resumeTopBar : appsTopBar}
-        detailPane={!isResume && paneOpen ? (
+        topBar={topBar}
+        detailPane={isApplications && paneOpen ? (
           <DetailSlideOver
             application={selectedApplication}
             isOpen
@@ -178,7 +187,7 @@ export default function App() {
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder user={user} /> : <>
+        {isResume ? <ResumeBuilder user={user} /> : isKnowledge ? <KnowledgeBank user={user} /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
