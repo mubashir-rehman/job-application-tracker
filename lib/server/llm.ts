@@ -30,6 +30,12 @@ export interface LLMOptions {
   model?: string;
   maxTokens?: number;
   baseUrl?: string; // required for provider 'custom' (OpenAI-compatible endpoint)
+  // Opt INTO reasoning for hard generative tasks (e.g. resume tailoring). Default
+  // off — most calls want the answer, not tokens spent thinking. When on, give a
+  // generous maxTokens so reasoning + the answer both fit. Gemini uses a dynamic
+  // thinking budget; Anthropic uses extended thinking; OpenAI-compatible/MiMo
+  // models reason intrinsically (no flag — just the larger token budget).
+  thinking?: boolean;
 }
 
 export class LLMError extends Error {
@@ -102,7 +108,10 @@ export async function callLLM(opts: LLMOptions): Promise<string> {
   throw new LLMError(`Unknown provider: ${provider}`, 400);
 }
 
-async function callAnthropic({ apiKey, prompt, system, model, maxTokens }: LLMOptions): Promise<string> {
+async function callAnthropic({ apiKey, prompt, system, model, maxTokens, thinking }: LLMOptions): Promise<string> {
+  // Extended thinking needs max_tokens > budget_tokens; budget ~half the cap.
+  const max = maxTokens ?? 2000;
+  const useThinking = thinking && max > 2048;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -112,14 +121,17 @@ async function callAnthropic({ apiKey, prompt, system, model, maxTokens }: LLMOp
     },
     body: JSON.stringify({
       model: model || DEFAULT_MODEL.anthropic,
-      max_tokens: maxTokens ?? 2000,
+      max_tokens: max,
       ...(system ? { system } : {}),
+      ...(useThinking ? { thinking: { type: 'enabled', budget_tokens: Math.floor(max / 2) } } : {}),
       messages: [{ role: 'user', content: prompt }],
     }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new LLMError(data?.error?.message || `Anthropic error ${res.status}`, res.status);
-  return data?.content?.[0]?.text ?? '';
+  // With thinking on, content[] holds thinking blocks before the text block — pick the text.
+  const blocks = Array.isArray(data?.content) ? data.content : [];
+  return blocks.find((b: any) => b?.type === 'text')?.text ?? '';
 }
 
 // Shared by OpenAI and any OpenAI-chat-completions-compatible provider (MiMo).
@@ -148,8 +160,11 @@ async function callOpenAICompatible(
   return data?.choices?.[0]?.message?.content ?? '';
 }
 
-async function callGemini({ apiKey, prompt, system, model, maxTokens }: LLMOptions): Promise<string> {
+async function callGemini({ apiKey, prompt, system, model, maxTokens, thinking }: LLMOptions): Promise<string> {
   const m = model || DEFAULT_MODEL.gemini;
+  // thinking on → dynamic budget (model decides how much to reason). Off → 0, so a
+  // small maxOutputTokens isn't eaten by reasoning and the answer comes back empty.
+  const thinkingBudget = thinking ? -1 : 0;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
@@ -158,9 +173,7 @@ async function callGemini({ apiKey, prompt, system, model, maxTokens }: LLMOptio
       body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        // thinkingBudget:0 — gemini-2.5-flash is a thinking model; without this a
-        // small maxOutputTokens is consumed by reasoning and the answer comes back empty.
-        generationConfig: { maxOutputTokens: maxTokens ?? 2000, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { maxOutputTokens: maxTokens ?? 2000, thinkingConfig: { thinkingBudget } },
       }),
     },
   );
