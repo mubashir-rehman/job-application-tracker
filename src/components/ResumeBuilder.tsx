@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
@@ -11,7 +11,6 @@ import { JobApplication } from '../types';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
-import { useTailoredResumes } from '../hooks/useTailoredResumes';
 import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
 import { splitTailored, downloadDocx, printPdf } from '../lib/resumeRender';
@@ -21,14 +20,20 @@ import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/cus
 const providerLabel = (id: Provider) =>
   id === 'custom' ? 'Custom endpoint' : PROVIDERS.find(p => p.id === id)?.label ?? id;
 
-export function ResumeBuilder({ user, applications, onManageKeys }: {
+export function ResumeBuilder({
+  user, applications, onManageKeys,
+  history, onAddTailored, onRemoveTailored, tailorTarget,
+}: {
   user: SupabaseUser | null;
   applications: JobApplication[];
   onManageKeys: () => void;
+  history: TailoredResume[];
+  onAddTailored: (input: { jobId: string | null; label: string; contentMd: string }) => void;
+  onRemoveTailored: (id: string) => void;
+  tailorTarget: { jobId: string; nonce: number } | null;
 }) {
   const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
-  const { items: history, add: addTailored, remove: removeTailored } = useTailoredResumes(user);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [customCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
   const [selectedJobId, setSelectedJobId] = useState('');     // '' = quick paste (no job)
@@ -85,6 +90,14 @@ export function ResumeBuilder({ user, applications, onManageKeys }: {
     }
   };
 
+  // Arriving from a job's detail pane ("Tailor for this job") — preselect it.
+  useEffect(() => {
+    if (!tailorTarget) return;
+    onPickJob(tailorTarget.jobId);
+    setActiveTab('generate');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tailorTarget?.nonce]);
+
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-picking the same file
@@ -127,7 +140,7 @@ export function ResumeBuilder({ user, applications, onManageKeys }: {
       // Save to history — linked to the chosen job, or local-only for quick paste.
       const job = selectedJobId ? applications.find(x => x.id === selectedJobId) : undefined;
       const label = job ? jobTitle(job) : (jdText.trim().split('\n').find(Boolean)?.slice(0, 60) || 'Quick tailor');
-      addTailored({ jobId: selectedJobId || null, label, contentMd: md });
+      onAddTailored({ jobId: selectedJobId || null, label, contentMd: md });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed');
     } finally {
@@ -504,7 +517,7 @@ export function ResumeBuilder({ user, applications, onManageKeys }: {
                   </button>
                   <ExportButtons md={t.contentMd} />
                   <button
-                    onClick={() => removeTailored(t.id)}
+                    onClick={() => onRemoveTailored(t.id)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-rose-900/40 text-[11px] font-bold text-slate-400 hover:text-rose-300 transition"
                     aria-label="Delete resume"
                   >

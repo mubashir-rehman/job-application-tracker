@@ -7,10 +7,12 @@ import { CompanyAvatar } from './common/CompanyAvatar';
 import {
   X, Save, ArrowRight, GitBranch, ThumbsUp, ThumbsDown,
   Quote, Clock, ChevronDown, Calendar, Link2, ExternalLink, Users,
-  Award, Star, Briefcase,
+  Award, Star, Briefcase, FileText, Wand2, Copy, Download, Printer, Trash2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { TailoredResume } from '../lib/tailoredResumeService';
+import { splitTailored, downloadDocx, printPdf } from '../lib/resumeRender';
 
 interface DetailSlideOverProps {
   application: JobApplication | null;
@@ -19,6 +21,11 @@ interface DetailSlideOverProps {
   onUpdateApplication: (app: JobApplication) => void;
   /** Render inline as a shell column (desktop) instead of an overlay sheet (mobile/narrow). */
   asPane?: boolean;
+  /** Tailored-resume history (lifted in App); the section shows entries for this job. */
+  tailored?: TailoredResume[];
+  onRemoveTailored?: (id: string) => void;
+  /** Jump to the Resume Builder preselected to tailor for this job. */
+  onTailor?: (jobId: string) => void;
 }
 
 // ── helpers ──────────────────────────────────────────────
@@ -54,11 +61,11 @@ function Section({ icon: Icon, title, hint, open, onToggle, children }: {
   );
 }
 
-export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false }: DetailSlideOverProps) {
+export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false, tailored = [], onRemoveTailored, onTailor }: DetailSlideOverProps) {
   const [editedApp, setEditedApp] = useState<JobApplication | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({});
-  const [openSections, setOpenSections] = useState({ details: false, contacts: false, retro: false });
+  const [openSections, setOpenSections] = useState({ details: false, contacts: false, retro: false, resumes: false });
 
   useEffect(() => {
     if (application) {
@@ -140,6 +147,11 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
   const toggleSection = (id: keyof typeof openSections) =>
     setOpenSections(p => ({ ...p, [id]: !p[id] }));
+
+  // Tailored resumes saved for this job + inline export (resume part only).
+  const jobResumes = tailored.filter(t => t.jobId === editedApp.id);
+  const exportDocx = async (md: string) => { try { await downloadDocx(splitTailored(md).resumeMd); } catch { /* popup/render issue — ignore here */ } };
+  const exportPdf = (md: string) => { try { printPdf(splitTailored(md).resumeMd); } catch { /* popup blocked — ignore here */ } };
 
   // ── body ───────────────────────────────────────────────
   const body = (
@@ -403,6 +415,43 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
                   })}
                 </div>
               </div>
+            </Section>
+
+            {/* TAILORED RESUMES (for this job) */}
+            <Section icon={FileText} title="Tailored Resumes" hint={jobResumes.length ? `${jobResumes.length} saved` : undefined} open={openSections.resumes} onToggle={() => toggleSection('resumes')}>
+              {onTailor && (
+                <button
+                  onClick={() => onTailor(editedApp.id)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition"
+                >
+                  <Wand2 className="w-3.5 h-3.5" /> Tailor a resume for this job
+                </button>
+              )}
+              {jobResumes.length === 0 ? (
+                <p className="text-[11px] text-slate-500">No tailored resumes yet for this job — generate one with your master CV.</p>
+              ) : (
+                <div className="space-y-2">
+                  {jobResumes.map(t => (
+                    <div key={t.id} className="flex items-center justify-between gap-2 bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          Resume{t.version > 1 ? ` v${t.version}` : ''}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{new Date(t.createdAt).toLocaleDateString()}</div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => navigator.clipboard.writeText(t.contentMd)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition" aria-label="Copy Markdown" title="Copy Markdown"><Copy className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => exportDocx(t.contentMd)} className="p-1.5 rounded-md text-slate-400 hover:text-sky-300 hover:bg-slate-800 transition" aria-label="Download ATS .docx" title="ATS .docx"><Download className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => exportPdf(t.contentMd)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition" aria-label="Print to PDF" title="Designed PDF"><Printer className="w-3.5 h-3.5" /></button>
+                        {onRemoveTailored && (
+                          <button onClick={() => onRemoveTailored(t.id)} className="p-1.5 rounded-md text-slate-400 hover:text-rose-300 hover:bg-rose-900/30 transition" aria-label="Delete resume" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Section>
           </div>
         </div>

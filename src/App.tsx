@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from './hooks/useTheme';
 import { useAuth } from './hooks/useAuth';
 import { useApplications } from './hooks/useApplications';
+import { useTailoredResumes } from './hooks/useTailoredResumes';
 import { useMediaQuery } from './hooks/usePlatform';
 import { useEscapeKey } from './hooks/useEscapeKey';
 
@@ -29,9 +30,15 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const { user, isGuest, signOut, signIn, enterGuestMode } = useAuth();
   const { applications, isLoading, dbError, addApplication, updateApplication, deleteApplication, refreshFromCloud, exportData } = useApplications(user);
+  // Tailored-resume history lifted here so the builder and the detail pane share one
+  // live source (job-linked entries sync to tailored_resumes; quick-paste stays local).
+  const { items: tailoredItems, add: addTailored, remove: removeTailored } = useTailoredResumes(user);
 
   // UI-only state (stays in App)
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+  // Set when "Tailor for this job" is clicked in the detail pane → opens the builder
+  // preselected for that job. The nonce lets the same job re-trigger the effect.
+  const [tailorTarget, setTailorTarget] = useState<{ jobId: string; nonce: number } | null>(null);
   const [isNewAppOpen, setIsNewAppOpen]   = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -47,6 +54,13 @@ export default function App() {
   // screens fall back to the overlay sheet.
   const isWide = useMediaQuery('(min-width: 1280px)');
   const paneOpen = isWide && selectedApplication !== null;
+
+  // Jump to the Resume Builder, preselected to tailor for a specific job.
+  const handleTailor = (jobId: string) => {
+    setTailorTarget({ jobId, nonce: Date.now() });
+    setSelectedApplication(null);
+    setActiveView('resume');
+  };
 
   useEffect(() => {
     localStorage.setItem('hiretrack_show_telemetry', String(showTelemetry));
@@ -191,10 +205,13 @@ export default function App() {
             asPane
             onClose={() => setSelectedApplication(null)}
             onUpdateApplication={handleUpdateApplication}
+            tailored={tailoredItems}
+            onRemoveTailored={removeTailored}
+            onTailor={handleTailor}
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder user={user} applications={applications} onManageKeys={() => setActiveView('keys')} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
+        {isResume ? <ResumeBuilder user={user} applications={applications} onManageKeys={() => setActiveView('keys')} history={tailoredItems} onAddTailored={addTailored} onRemoveTailored={removeTailored} tailorTarget={tailorTarget} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
@@ -246,6 +263,9 @@ export default function App() {
         isOpen={selectedApplication !== null && !isWide}
         onClose={() => setSelectedApplication(null)}
         onUpdateApplication={handleUpdateApplication}
+        tailored={tailoredItems}
+        onRemoveTailored={removeTailored}
+        onTailor={handleTailor}
       />
 
       <NewApplicationModal
