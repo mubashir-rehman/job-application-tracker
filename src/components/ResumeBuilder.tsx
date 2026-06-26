@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Eye, EyeOff, Wand2, Clock,
@@ -7,16 +8,15 @@ import {
 } from 'lucide-react';
 import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
+import { useMasterResume } from '../hooks/useMasterResume';
 import { tailorResume } from '../lib/apiClient';
 
-const MASTER_CV_KEY = 'hiretrack_master_cv';
-
-export function ResumeBuilder() {
+export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
   const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
+  const { masterMd, setMasterMd, status } = useMasterResume(user);
   const [keyInputs, setKeyInputs]     = useState<Partial<Record<Provider, string>>>({});
   const [showKeys, setShowKeys]       = useState<Partial<Record<Provider, boolean>>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
-  const [masterMd, setMasterMd]       = useState(() => localStorage.getItem(MASTER_CV_KEY) || '');
   const [jdText, setJdText]           = useState('');
   const [result, setResult]           = useState('');
   const [error, setError]             = useState<string | null>(null);
@@ -27,8 +27,13 @@ export function ResumeBuilder() {
   const selectedKeyExists = !!apiKeys[selectedProvider];
   const canGenerate = !!masterMd.trim() && !!jdText.trim() && selectedKeyExists && !isGenerating;
 
-  // Master CV is the source of truth — persist it locally as the user edits.
-  useEffect(() => { localStorage.setItem(MASTER_CV_KEY, masterMd); }, [masterMd]);
+  const masterStatusLabel = !masterMd.trim()
+    ? 'paste once'
+    : status === 'saving' ? 'saving…'
+    : status === 'synced' ? 'synced to cloud'
+    : status === 'loading' ? 'loading…'
+    : status === 'error' ? 'saved locally (cloud failed)'
+    : 'saved locally';
 
   const commitKey = (provider: Provider) => {
     const key = keyInputs[provider]?.trim();
@@ -138,7 +143,7 @@ export function ResumeBuilder() {
                   <FileText className="w-4 h-4 text-indigo-400" />
                   Master CV
                 </h3>
-                <span className="text-[10px] text-slate-600 font-mono">{masterMd.trim() ? 'saved locally' : 'paste once'}</span>
+                <span className="text-[10px] text-slate-600 font-mono">{masterStatusLabel}</span>
               </div>
               <textarea
                 value={masterMd}
@@ -147,7 +152,7 @@ export function ResumeBuilder() {
                 placeholder="Paste your full master CV (Markdown or plain text). This is the single source of truth — tailored resumes are generated from it."
                 className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-xs leading-relaxed text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition resize-y font-mono"
               />
-              <p className="text-[10px] text-slate-500">Stored in your browser only. Cloud sync to the versioned master_resume table comes later.</p>
+              <p className="text-[10px] text-slate-500">{user ? 'Auto-saved to your cloud master_resume; mirrored locally.' : 'Stored in your browser. Sign in to sync to the cloud master CV.'}</p>
             </div>
 
             {/* Job description */}

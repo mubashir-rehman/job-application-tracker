@@ -178,7 +178,7 @@ export default function App() {
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder /> : <>
+        {isResume ? <ResumeBuilder user={user} /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
