@@ -11,6 +11,7 @@ import { Handler } from '../lib/server/types';
 import health from '../api/health';
 import tailor from '../api/resume/tailor';
 import importResume from '../api/resume/import';
+import jdParse from '../api/jd/parse';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -29,6 +30,7 @@ const mount = (h: Handler) => (req: Request, res: Response) => {
 app.all('/api/health', mount(health));
 app.all('/api/resume/tailor', mount(tailor));
 app.all('/api/resume/import', mount(importResume));
+app.all('/api/jd/parse', mount(jdParse));
 
 const port = Number(process.env.API_PORT) || 3001;
 app.listen(port, () => {
@@ -36,4 +38,5 @@ app.listen(port, () => {
   console.log('   GET  /api/health');
   console.log('   POST /api/resume/tailor');
   console.log('   POST /api/resume/import');
+  console.log('   POST /api/jd/parse');
 });

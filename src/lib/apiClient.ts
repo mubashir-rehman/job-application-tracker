@@ -61,6 +61,45 @@ export async function convertResumeWithAI(p: ConvertParams): Promise<string> {
   return markdown;
 }
 
+export interface ParsedJdFields {
+  companyName?: string | null;
+  targetRole?: string | null;
+  workModel?: 'Remote' | 'Hybrid' | 'Onsite' | null;
+  location?: string | null;
+  salaryRange?: string | null;
+  otherBenefits?: string | null;
+  hrContact?: string | null;
+  appliedVia?: 'LinkedIn' | 'Email' | 'Company Form' | 'Referral' | 'Other' | null;
+  keyRequirements?: string | null;
+  techTags?: string[];
+}
+
+export interface ParseJdResult {
+  fields: ParsedJdFields;
+  gaps: string[];
+  usedLLM: boolean;
+  fetched: boolean;
+}
+
+export interface ParseJdParams {
+  jdText?: string;
+  jdUrl?: string;
+  // Optional BYOK config — omit to run deterministic-only (no LLM).
+  provider?: Provider;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+}
+
+// Parse a job description (text or URL) into structured fields via the
+// deterministic-first LangGraph pipeline. Works with or without a key.
+export async function parseJd(p: ParseJdParams): Promise<ParseJdResult> {
+  const headers = p.provider && p.apiKey
+    ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
+    : {};
+  return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl }, headers);
+}
+
 export async function apiHealth(): Promise<{ ok: boolean }> {
   const res = await fetch('/api/health');
   return res.json();

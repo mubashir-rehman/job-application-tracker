@@ -5,7 +5,9 @@ import { deriveCurrentStatus, extractTechTags } from '../lib/appUtils';
 import { WORK_MODELS, APPLIED_VIA } from '../lib/statusStyles';
 import { Field, Segmented, OptionSelect, fieldInput } from './common/Field';
 import { Modal, ModalHeader } from './common/Modal';
-import { Check, ChevronDown, Calendar, Wand2 } from 'lucide-react';
+import { Check, ChevronDown, Calendar, Sparkles, AlertCircle } from 'lucide-react';
+import { parseJd, ParsedJdFields } from '../lib/apiClient';
+import { resolveProviderConfig } from '../lib/providerConfig';
 
 interface NewApplicationModalProps {
   isOpen: boolean;
@@ -56,15 +58,55 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
 
   const [errors, setErrors] = useState<{ companyName?: string; targetRole?: string }>({});
 
-  // Best-effort local autofill: pull known keywords from the JD into the
-  // requirements field. Full company/role/comp parsing arrives with the pipeline.
-  const autofillFromJd = () => {
-    if (!jdInput.trim()) return;
-    setShowMore(true);
+  const [autofilling, setAutofilling] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
+  const [autofillNote, setAutofillNote] = useState<{ filled: string[]; gaps: string[]; usedLLM: boolean; fetched: boolean } | null>(null);
+
+  // Apply parsed fields without clobbering anything the user already typed.
+  const applyParsed = (f: ParsedJdFields): string[] => {
+    const filled: string[] = [];
+    const fillEmpty = (cur: string, set: (v: string) => void, val: string | null | undefined, label: string) => {
+      if (val && val.trim() && !cur.trim()) { set(val.trim()); filled.push(label); }
+    };
+    fillEmpty(companyName, setCompanyName, f.companyName, 'Company');
+    fillEmpty(targetRole, setTargetRole, f.targetRole, 'Role');
+    fillEmpty(location, setLocation, f.location, 'Location');
+    fillEmpty(salaryRange, setSalaryRange, f.salaryRange, 'Compensation');
+    fillEmpty(otherBenefits, setOtherBenefits, f.otherBenefits, 'Benefits');
+    fillEmpty(hrContact, setHrContact, f.hrContact, 'Contact');
     if (!keyJdRequirements.trim()) {
-      const tags = extractTechTags(jdInput);
-      const onlyUrl = /^https?:\/\/\S+$/.test(jdInput.trim());
-      setKeyJdRequirements(tags.length ? tags.join(', ') : (onlyUrl ? '' : jdInput.trim()));
+      const req = f.keyRequirements?.trim() || (f.techTags?.length ? f.techTags.join(', ') : '');
+      if (req) { setKeyJdRequirements(req); filled.push('Requirements'); }
+    }
+    // Work model / channel are inferences — autofill is an explicit action, so set them.
+    if (f.workModel) { setWorkModel(f.workModel); filled.push('Work model'); }
+    if (f.appliedVia) { setAppliedVia(f.appliedVia); filled.push('Via'); }
+    return filled;
+  };
+
+  // Deterministic-first parse (the LangGraph pipeline). Runs key-less when no
+  // provider is configured; uses the LLM only when the post needs it.
+  const handleAutofill = async () => {
+    const raw = jdInput.trim();
+    if (!raw) return;
+    setAutofilling(true);
+    setAutofillError(null);
+    setAutofillNote(null);
+    setShowMore(true);
+    const urlMatch = raw.match(/https?:\/\/\S+/);
+    const onlyUrl = /^https?:\/\/\S+$/.test(raw);
+    const cfg = resolveProviderConfig();
+    try {
+      const res = await parseJd({ jdText: onlyUrl ? undefined : raw, jdUrl: urlMatch?.[0], ...(cfg || {}) });
+      const filled = applyParsed(res.fields);
+      setAutofillNote({ filled, gaps: res.gaps, usedLLM: res.usedLLM, fetched: res.fetched });
+    } catch (e) {
+      // Graceful fallback: at least drop known tech keywords into requirements.
+      const tags = extractTechTags(raw);
+      if (tags.length && !keyJdRequirements.trim()) setKeyJdRequirements(tags.join(', '));
+      setAutofillError(e instanceof Error ? e.message : 'Autofill failed — fill the fields manually.');
+    } finally {
+      setAutofilling(false);
     }
   };
 
@@ -74,6 +116,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
     setShowMore(false); setWorkModel('Remote'); setLocation(''); setSalaryRange('');
     setOtherBenefits(''); setHrContact(''); setResumeLink(''); setPortfolioLink('');
     setKeyJdRequirements(''); setPriority(''); setErrors({});
+    setAutofilling(false); setAutofillError(null); setAutofillNote(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -141,19 +184,48 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   className={`${fieldInput} resize-none leading-relaxed`}
                   autoFocus
                 />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-600">Kept with this application. Full auto-fill comes with the pipeline.</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-600">Kept with this application. Autofill reads it deterministically first, AI only if needed.</span>
                   <button
                     type="button"
-                    onClick={autofillFromJd}
-                    disabled={!jdInput.trim()}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-800 disabled:opacity-40 text-[11px] font-bold text-slate-300 transition"
+                    onClick={handleAutofill}
+                    disabled={!jdInput.trim() || autofilling}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-[11px] font-bold text-white transition shrink-0"
                   >
-                    <Wand2 className="w-3 h-3 text-indigo-400" /> Autofill keywords
+                    {autofilling
+                      ? <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Reading…</>
+                      : <><Sparkles className="w-3 h-3" /> Autofill from JD</>}
                   </button>
                 </div>
               </div>
             </Field>
+
+            {autofillError && (
+              <div className="flex items-start gap-2 text-[11px] text-rose-300 bg-rose-950/20 border border-rose-900/40 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" /> {autofillError}
+              </div>
+            )}
+
+            {autofillNote && (
+              <div className="glass-panel rounded-xl border border-slate-800 px-3 py-2.5 space-y-1.5 text-[11px]">
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  {autofillNote.filled.length
+                    ? <span>Filled <span className="text-slate-100 font-semibold">{autofillNote.filled.join(', ')}</span></span>
+                    : <span>Nothing new to fill — review the fields below.</span>}
+                  <span className="ml-auto text-[9px] font-mono text-slate-600 shrink-0">
+                    {autofillNote.usedLLM ? 'AI-assisted' : 'no LLM used'}{autofillNote.fetched ? ' · fetched link' : ''}
+                  </span>
+                </div>
+                {autofillNote.gaps.length > 0 && (
+                  <ul className="space-y-0.5 text-slate-500 pl-0.5">
+                    {autofillNote.gaps.map((g, i) => (
+                      <li key={i} className="flex gap-1.5 leading-relaxed"><span className="text-slate-600 shrink-0">•</span>{g}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* Company + role */}
             <div className="grid grid-cols-2 gap-3">
