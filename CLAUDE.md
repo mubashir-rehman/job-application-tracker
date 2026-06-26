@@ -9,10 +9,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev        # Dev server on http://localhost:3000
-npm run lint       # TypeScript type-check (tsc --noEmit) — run after every code change
-npm run build      # Production bundle
-npm run db:migrate # Run Supabase schema migration via scripts/migrate.js
+npm run dev          # Frontend dev server on http://localhost:3000
+npm run dev:api      # Local API server on http://localhost:3001 (server/dev-api.ts)
+npm run dev:all      # Both together (vite + API) via concurrently
+npm run lint         # TypeScript type-check (tsc --noEmit) — run after every code change
+npm run build        # Production bundle
+npm run db:migrate          # Base job_applications migration (scripts/migrate.js)
+npm run db:migrate:pipeline # Pipeline tables migration (Track 2)
+npm run db:migrate:sql <f>  # Apply any .sql file over the IPv4 pooler
 ```
 
 No test runner is configured. Use `npm run lint` to catch errors. Manual browser testing is the verification path.
@@ -25,7 +29,15 @@ No test runner is configured. Use `npm run lint` to catch errors. Manual browser
 
 ### Entry point & routing
 
-`src/main.tsx` mounts `BrowserRouter` with two routes: `/` → `App.tsx`, `/privacy` → `PrivacyPolicy.tsx`. `vercel.json` rewrites all paths to `/` for SPA behavior.
+`src/main.tsx` mounts `BrowserRouter` with two routes: `/` → `App.tsx`, `/privacy` → `PrivacyPolicy.tsx`. `vercel.json` rewrites all non-`/api/` paths to `/` for SPA behavior.
+
+### API layer (local-first, Vercel-deployable)
+
+Framework-agnostic handlers run in two places from one source:
+- **Local**: `server/dev-api.ts` (Express) mounts each handler at `/api/*` on port 3001; Vite proxies `/api` → 3001 (`npm run dev:all`).
+- **Production**: the same files under `api/**` deploy as Vercel serverless functions (filename = route).
+
+Handlers are typed against the minimal `ApiReq`/`ApiRes` in `lib/server/types.ts` (satisfied by both Express and Vercel). Shared server code lives in `lib/server/` (kept out of `api/` so Vercel doesn't route it): `llm.ts` (BYOK provider client via `fetch` — Anthropic/OpenAI/Gemini, no SDKs), `http.ts` (header/method helpers). **BYOK keys arrive in the `X-API-Key` header per request and are never stored or logged.** Endpoints: `GET /api/health`, `POST /api/resume/tailor`.
 
 ### State & data flow
 

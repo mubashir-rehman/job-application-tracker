@@ -50,6 +50,14 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Proxy API calls to the local dev API server (server/dev-api.ts).
+      // In production on Vercel, /api/* are serverless functions — no proxy needed.
+      proxy: {
+        '/api': {
+          target: `http://localhost:${process.env.API_PORT || 3001}`,
+          changeOrigin: true,
+        },
+      },
     },
   };
 });
