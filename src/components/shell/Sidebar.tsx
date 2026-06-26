@@ -2,10 +2,10 @@ import React from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   LayoutGrid, Sparkles, BrainCircuit, Search, Sun, Moon,
-  Settings, LogOut, LogIn, User,
+  Settings, LogOut, LogIn, User, Key,
 } from 'lucide-react';
 
-export type ViewKey = 'applications' | 'resume' | 'knowledge';
+export type ViewKey = 'applications' | 'resume' | 'knowledge' | 'keys';
 
 export interface NavItem {
   key: ViewKey;
@@ -21,6 +21,7 @@ export const NAV: NavItem[] = [
   { key: 'applications', label: 'Applications',  shortLabel: 'Apps',      icon: LayoutGrid },
   { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles },
   { key: 'knowledge',    label: 'Knowledge Bank', shortLabel: 'Knowledge', icon: BrainCircuit },
+  { key: 'keys',         label: 'AI Keys',        shortLabel: 'Keys',      icon: Key },
 ];
 
 interface SidebarProps {
@@ -92,6 +93,9 @@ export function Sidebar({
             >
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1 text-left">{label}</span>
+              {key === 'keys' && hasApiKey && (
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" title="API key configured" />
+              )}
               {soon && (
                 <span className="text-[8px] font-mono uppercase tracking-wider bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
                   Soon
@@ -115,11 +119,10 @@ export function Sidebar({
           <button
             onClick={onOpenSettings}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition relative"
-            aria-label="Settings — AI keys & master resume"
-            title="Settings — AI Keys & Master Resume"
+            aria-label="Settings — master resume"
+            title="Settings — Master Resume"
           >
             <Settings className="w-4 h-4" />
-            {hasApiKey && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-400 rounded-full" />}
           </button>
         </div>
 

@@ -3,32 +3,30 @@ import { motion } from 'motion/react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   Sparkles, Key, FileText, CheckCircle2,
-  AlertCircle, Eye, EyeOff, Wand2, Clock,
+  AlertCircle, Wand2, Clock,
   Copy, Download, Check, FileUp, Server, ShieldCheck,
 } from 'lucide-react';
-import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
+import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
-import { CustomEndpoint, loadCustomEndpoint, saveCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
+import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
 
 const providerLabel = (id: Provider) =>
   id === 'custom' ? 'Custom endpoint' : PROVIDERS.find(p => p.id === id)?.label ?? id;
 
-export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
-  const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
+export function ResumeBuilder({ user, onManageKeys }: { user: SupabaseUser | null; onManageKeys: () => void }) {
+  const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
-  const [keyInputs, setKeyInputs]     = useState<Partial<Record<Provider, string>>>({});
-  const [showKeys, setShowKeys]       = useState<Partial<Record<Provider, boolean>>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
-  const [customCfg, setCustomCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
+  const [customCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
   const [jdText, setJdText]           = useState('');
   const [result, setResult]           = useState('');
   const [error, setError]             = useState<string | null>(null);
   const [copied, setCopied]           = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab]     = useState<'generate' | 'keys' | 'history'>('generate');
+  const [activeTab, setActiveTab]     = useState<'generate' | 'history'>('generate');
 
   // Master-CV import (upload pdf/docx/md/txt → markdown)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,17 +47,6 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
       ? { provider: 'custom', apiKey: apiKeys.custom!, model: customCfg.model.trim(), baseUrl: normalizeBaseUrl(customCfg.baseUrl) }
       : { provider: selectedProvider, apiKey: apiKeys[selectedProvider]! };
 
-  const updateCustom = (patch: Partial<CustomEndpoint>) => {
-    setCustomCfg(prev => {
-      const next = { ...prev, ...patch };
-      saveCustomEndpoint(next);
-      return next;
-    });
-  };
-
-  const fieldCls =
-    'w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition';
-
   const masterStatusLabel = !masterMd.trim()
     ? 'paste once'
     : status === 'saving' ? 'saving…'
@@ -67,13 +54,6 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
     : status === 'loading' ? 'loading…'
     : status === 'error' ? 'saved locally (cloud failed)'
     : 'saved locally';
-
-  const commitKey = (provider: Provider) => {
-    const key = keyInputs[provider]?.trim();
-    if (!key) return;
-    saveKey(provider, key);
-    setKeyInputs(prev => ({ ...prev, [provider]: '' }));
-  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,7 +118,6 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
 
   const tabs = [
     { id: 'generate' as const, label: 'Generate',  Icon: Wand2  },
-    { id: 'keys'     as const, label: 'API Keys',   Icon: Key    },
     { id: 'history'  as const, label: 'History',    Icon: Clock  },
   ];
 
@@ -162,11 +141,16 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
           >
             <Icon className="w-3.5 h-3.5" />
             {label}
-            {id === 'keys' && hasAnyKey && (
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            )}
           </button>
         ))}
+        <button
+          onClick={onManageKeys}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-100 transition-all"
+        >
+          <Key className="w-3.5 h-3.5" />
+          Manage keys
+          {hasAnyKey && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />}
+        </button>
       </div>
 
       {/* ── GENERATE TAB ─────────────────────────────────────── */}
@@ -185,7 +169,7 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                 <p className="text-xs text-slate-300">
                   <span className="font-bold text-amber-300">No API key configured. </span>
                   <button
-                    onClick={() => setActiveTab('keys')}
+                    onClick={onManageKeys}
                     className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
                   >
                     Add your key
@@ -354,7 +338,7 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                 <p className="text-[11px] text-amber-400/80 flex items-center gap-1.5">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {isCustom ? 'Custom endpoint not set up (base URL, model, key).' : `No key for ${providerLabel(selectedProvider)}.`}
-                  <button onClick={() => setActiveTab('keys')} className="underline underline-offset-2 hover:text-amber-300">{isCustom ? 'Set it up' : 'Add it'}</button>
+                  <button onClick={onManageKeys} className="underline underline-offset-2 hover:text-amber-300">{isCustom ? 'Set it up' : 'Add it'}</button>
                 </p>
               )}
 
@@ -435,151 +419,6 @@ export function ResumeBuilder({ user }: { user: SupabaseUser | null }) {
                     BYOK: your key stays in the browser and is sent only in the request header — never stored on any server.
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── API KEYS TAB ─────────────────────────────────────── */}
-      {activeTab === 'keys' && (
-        <div className="max-w-2xl space-y-5">
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Add at least one API key to enable resume generation. Keys are stored only in your browser's <code className="font-mono text-indigo-400 text-xs bg-indigo-950/30 px-1.5 py-0.5 rounded">localStorage</code> — never on any server.
-          </p>
-
-          {PROVIDERS.map(p => {
-            const saved = !!apiKeys[p.id];
-            return (
-              <div key={p.id} className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-extrabold text-slate-100">{p.label}</h3>
-                    {saved && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" /> Configured
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-slate-600 font-mono">{p.hint}</span>
-                    {saved && (
-                      <button
-                        onClick={() => removeKey(p.id)}
-                        className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {saved ? (
-                  <div className="flex items-center gap-2 bg-slate-900/60 rounded-lg px-3 py-2.5 border border-slate-800">
-                    <Key className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                    <span className="text-xs font-mono text-slate-500">{maskKey(apiKeys[p.id]!, 10, 24)}</span>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type={showKeys[p.id] ? 'text' : 'password'}
-                        value={keyInputs[p.id] || ''}
-                        onChange={e => setKeyInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && commitKey(p.id)}
-                        placeholder={p.placeholder}
-                        className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowKeys(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition"
-                        aria-label={showKeys[p.id] ? 'Hide key' : 'Show key'}
-                      >
-                        {showKeys[p.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => commitKey(p.id)}
-                      disabled={!keyInputs[p.id]?.trim()}
-                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs transition shrink-0"
-                    >
-                      Save
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Custom OpenAI-compatible endpoint */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-indigo-400" /> Custom (OpenAI-compatible)
-                </h3>
-                {customReady && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="w-3 h-3" /> Configured
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] text-slate-600 font-mono">freellmapi · OpenRouter · LM Studio · vLLM</span>
-            </div>
-
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Any endpoint implementing <code className="font-mono text-indigo-400 bg-indigo-950/30 px-1 py-0.5 rounded">/v1/chat/completions</code>. Self-host{' '}
-              <a href="https://github.com/tashfeenahmed/freellmapi" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">freellmapi</a>{' '}
-              to stack many free tiers behind one URL. Your key & endpoint stay in your browser.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Base URL</span>
-                <input value={customCfg.baseUrl} onChange={e => updateCustom({ baseUrl: e.target.value })} placeholder="https://host/v1" className={`${fieldCls} font-mono`} />
-              </label>
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Model</span>
-                <input value={customCfg.model} onChange={e => updateCustom({ model: e.target.value })} placeholder="e.g. llama-3.3-70b" className={`${fieldCls} font-mono`} />
-              </label>
-            </div>
-
-            {apiKeys.custom ? (
-              <div className="flex items-center justify-between gap-2 bg-slate-900/60 rounded-lg px-3 py-2.5 border border-slate-800">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Key className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                  <span className="text-xs font-mono text-slate-500 truncate">{maskKey(apiKeys.custom, 6, 18)}</span>
-                </div>
-                <button onClick={() => removeKey('custom')} className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition shrink-0">Remove key</button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type={showKeys.custom ? 'text' : 'password'}
-                    value={keyInputs.custom || ''}
-                    onChange={e => setKeyInputs(prev => ({ ...prev, custom: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && commitKey('custom')}
-                    placeholder="API key (any token your endpoint expects)"
-                    className={`${fieldCls} font-mono pr-10`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKeys(prev => ({ ...prev, custom: !prev.custom }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition"
-                    aria-label={showKeys.custom ? 'Hide key' : 'Show key'}
-                  >
-                    {showKeys.custom ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <button
-                  onClick={() => commitKey('custom')}
-                  disabled={!keyInputs.custom?.trim()}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs transition shrink-0"
-                >
-                  Save
-                </button>
               </div>
             )}
           </div>

@@ -6,9 +6,10 @@ import { PerformanceTelemetry } from './components/PerformanceTelemetry';
 import { ApplicationTable } from './components/ApplicationTable';
 import { ResumeBuilder } from './components/ResumeBuilder';
 import { KnowledgeBank } from './components/KnowledgeBank';
+import { ApiKeysManager } from './components/ApiKeysManager';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
-import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, EyeOff, Sun, Moon, Settings, User } from 'lucide-react';
+import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, EyeOff, Sun, Moon, Settings, User, Key } from 'lucide-react';
 import { isSupabaseConfigured } from './supabaseClient';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileModal } from './components/ProfileModal';
@@ -103,12 +104,14 @@ export default function App() {
     { id: 'analytics', label: showTelemetry ? 'Hide Analytics' : 'Show Analytics', icon: showTelemetry ? EyeOff : Eye, run: () => setShowTelemetry(v => !v) },
     { id: 'theme',     label: `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`, icon: theme === 'dark' ? Sun : Moon, run: toggleTheme },
     { id: 'export',    label: 'Export applications as JSON',                       icon: Download,                     run: () => exportData(applications) },
-    { id: 'settings',  label: 'Open Settings (AI keys & resume)',                  icon: Settings,                     run: () => setIsSettingsOpen(true) },
+    { id: 'keys',      label: 'Manage AI provider keys',                           icon: Key,                          run: () => setActiveView('keys') },
+    { id: 'settings',  label: 'Open Settings (master resume URL)',                 icon: Settings,                     run: () => setIsSettingsOpen(true) },
     { id: 'profile',   label: 'Open Profile',                                      icon: User,                         run: () => setIsProfileOpen(true) },
   ];
 
   const isResume = activeView === 'resume';
   const isKnowledge = activeView === 'knowledge';
+  const isKeys = activeView === 'keys';
   const isApplications = activeView === 'applications';
 
   const appsTopBar = (
@@ -157,7 +160,11 @@ export default function App() {
     <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Knowledge Bank</h1>
   );
 
-  const topBar = isResume ? resumeTopBar : isKnowledge ? knowledgeTopBar : appsTopBar;
+  const keysTopBar = (
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">AI Keys</h1>
+  );
+
+  const topBar = isResume ? resumeTopBar : isKnowledge ? knowledgeTopBar : isKeys ? keysTopBar : appsTopBar;
 
   return (
     <>
@@ -187,7 +194,7 @@ export default function App() {
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder user={user} /> : isKnowledge ? <KnowledgeBank user={user} /> : <>
+        {isResume ? <ResumeBuilder user={user} onManageKeys={() => setActiveView('keys')} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
