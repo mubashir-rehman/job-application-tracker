@@ -19,7 +19,7 @@ export interface NavItem {
 // and BottomNav (mobile).
 export const NAV: NavItem[] = [
   { key: 'applications', label: 'Applications',  shortLabel: 'Apps',      icon: LayoutGrid },
-  { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles,     soon: true },
+  { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles },
   { key: 'knowledge',    label: 'Knowledge Bank', shortLabel: 'Knowledge', icon: BrainCircuit, soon: true },
 ];
 

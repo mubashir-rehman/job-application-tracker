@@ -1,24 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
-  Sparkles, Key, FileText, Link2, CheckCircle2,
+  Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Eye, EyeOff, Wand2, Clock,
-  ExternalLink, ChevronRight,
+  Copy, Download, Check,
 } from 'lucide-react';
 import { Provider, PROVIDERS, maskKey } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
+import { tailorResume } from '../lib/apiClient';
+
+const MASTER_CV_KEY = 'hiretrack_master_cv';
 
 export function ResumeBuilder() {
   const { apiKeys, saveKey, removeKey, hasAnyKey } = useApiKeys();
   const [keyInputs, setKeyInputs]     = useState<Partial<Record<Provider, string>>>({});
   const [showKeys, setShowKeys]       = useState<Partial<Record<Provider, boolean>>>({});
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
-  const [jdUrl, setJdUrl]             = useState('');
-  const [companyUrl, setCompanyUrl]   = useState('');
+  const [masterMd, setMasterMd]       = useState(() => localStorage.getItem(MASTER_CV_KEY) || '');
+  const [jdText, setJdText]           = useState('');
+  const [result, setResult]           = useState('');
+  const [error, setError]             = useState<string | null>(null);
+  const [copied, setCopied]           = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab]     = useState<'generate' | 'keys' | 'history'>('generate');
 
   const selectedKeyExists = !!apiKeys[selectedProvider];
+  const canGenerate = !!masterMd.trim() && !!jdText.trim() && selectedKeyExists && !isGenerating;
+
+  // Master CV is the source of truth — persist it locally as the user edits.
+  useEffect(() => { localStorage.setItem(MASTER_CV_KEY, masterMd); }, [masterMd]);
 
   const commitKey = (provider: Provider) => {
     const key = keyInputs[provider]?.trim();
@@ -28,12 +38,38 @@ export function ResumeBuilder() {
   };
 
   const handleGenerate = async () => {
-    if (!jdUrl.trim() || !selectedKeyExists) return;
+    if (!canGenerate) return;
     setIsGenerating(true);
-    // TODO: POST /api/resume/generate { jdUrl, companyUrl, provider }
-    //       with header X-API-Key: apiKeys[selectedProvider]
-    await new Promise(r => setTimeout(r, 1500));
-    setIsGenerating(false);
+    setError(null);
+    setResult('');
+    try {
+      const md = await tailorResume({
+        provider: selectedProvider,
+        apiKey: apiKeys[selectedProvider]!,
+        masterMd,
+        jdText,
+      });
+      setResult(md);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Generation failed');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyResult = async () => {
+    await navigator.clipboard.writeText(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const downloadResult = () => {
+    const blob = new Blob([result], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tailored-resume.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const tabs = [
@@ -43,19 +79,10 @@ export function ResumeBuilder() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-6">
-        <div>
-          <h1 className="text-3xl font-black font-display text-slate-100 tracking-tight flex items-center gap-3">
-            <Sparkles className="w-7 h-7 text-indigo-400" />
-            Resume Builder
-          </h1>
-          <p className="text-slate-400 text-sm font-medium mt-1">
-            AI-powered, ATS-optimized resumes tailored to each job description. Your API key, your data.
-          </p>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <p className="text-slate-400 text-sm font-medium">
+        AI-powered, ATS-optimized resumes tailored to each job description. Your API key, your data.
+      </p>
 
       {/* Sub-tabs */}
       <div className="flex gap-1 p-1 glass-panel rounded-xl border border-slate-800 w-fit">
@@ -104,46 +131,38 @@ export function ResumeBuilder() {
               </motion.div>
             )}
 
-            {/* JD inputs */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-5">
+            {/* Master CV — the source of truth (persisted locally) */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-400" />
+                  Master CV
+                </h3>
+                <span className="text-[10px] text-slate-600 font-mono">{masterMd.trim() ? 'saved locally' : 'paste once'}</span>
+              </div>
+              <textarea
+                value={masterMd}
+                onChange={e => setMasterMd(e.target.value)}
+                rows={8}
+                placeholder="Paste your full master CV (Markdown or plain text). This is the single source of truth — tailored resumes are generated from it."
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-xs leading-relaxed text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition resize-y font-mono"
+              />
+              <p className="text-[10px] text-slate-500">Stored in your browser only. Cloud sync to the versioned master_resume table comes later.</p>
+            </div>
+
+            {/* Job description */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
               <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-400" />
+                <Wand2 className="w-4 h-4 text-indigo-400" />
                 Job Description
               </h3>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  JD URL <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                  <input
-                    type="url"
-                    value={jdUrl}
-                    onChange={e => setJdUrl(e.target.value)}
-                    placeholder="https://jobs.company.com/role/12345"
-                    className="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition"
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500">Required. Must be a publicly accessible job posting URL.</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Company Website <span className="text-slate-600">(optional)</span>
-                </label>
-                <div className="relative">
-                  <ExternalLink className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                  <input
-                    type="url"
-                    value={companyUrl}
-                    onChange={e => setCompanyUrl(e.target.value)}
-                    placeholder="https://company.com"
-                    className="w-full bg-slate-900/60 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition"
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500">Adds company culture context to improve tailoring.</p>
-              </div>
+              <textarea
+                value={jdText}
+                onChange={e => setJdText(e.target.value)}
+                rows={6}
+                placeholder="Paste the full job description here…"
+                className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-xs leading-relaxed text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition resize-y"
+              />
             </div>
 
             {/* Provider selector */}
@@ -192,13 +211,13 @@ export function ResumeBuilder() {
             {/* Generate button */}
             <button
               onClick={handleGenerate}
-              disabled={!jdUrl.trim() || !selectedKeyExists || isGenerating}
+              disabled={!canGenerate}
               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-black text-sm shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2.5 transition-all"
             >
               {isGenerating ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Analyzing JD &amp; generating...
+                  Tailoring resume…
                 </>
               ) : (
                 <>
@@ -207,54 +226,61 @@ export function ResumeBuilder() {
                 </>
               )}
             </button>
+
+            {error && (
+              <div className="glass-panel p-4 rounded-xl border border-rose-900/40 flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-300 leading-relaxed">{error}</p>
+              </div>
+            )}
           </div>
 
-          {/* Right: info cards */}
+          {/* Right: result */}
           <div className="space-y-4">
-            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">How it works</h3>
-              <ol className="space-y-3">
-                {[
-                  'Paste the job posting URL',
-                  'AI analyzes JD for requirements & ATS keywords',
-                  'Your master CV is matched and tailored',
-                  'ATS-optimized resume is generated',
-                  'Download as .md, .docx, or .pdf',
-                ].map((step, i) => (
-                  <li key={i} className="flex items-start gap-3 text-xs text-slate-400">
-                    <span className="w-5 h-5 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400 shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2.5">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                <Key className="w-3.5 h-3.5 text-emerald-400" />
-                BYOK Privacy
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Your API key is stored in your browser's localStorage only. It is sent in a request header directly to the generation endpoint and is never stored on any server.
-              </p>
-            </div>
-
-            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Output formats</h3>
-              {[
-                { fmt: 'Markdown (.md)', note: 'Clean, version-controlled' },
-                { fmt: 'Word (.docx)',   note: 'ATS-safe template' },
-                { fmt: 'PDF',           note: 'Final submission' },
-              ].map(({ fmt, note }) => (
-                <div key={fmt} className="flex items-center gap-2.5 text-xs">
-                  <ChevronRight className="w-3 h-3 text-indigo-400 shrink-0" />
-                  <span className="font-bold text-slate-300">{fmt}</span>
-                  <span className="text-slate-600">— {note}</span>
+            {result ? (
+              <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[70vh]">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 shrink-0">
+                  <h3 className="text-xs font-extrabold text-slate-100 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Tailored resume
+                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={copyResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Copy resume">
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                    <button onClick={downloadResult} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download resume as Markdown">
+                      <Download className="w-3.5 h-3.5" /> .md
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <pre className="px-5 py-4 overflow-auto text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-mono">{result}</pre>
+              </div>
+            ) : (
+              <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">How it works</h3>
+                <ol className="space-y-3">
+                  {[
+                    'Paste your master CV once (the source of truth)',
+                    'Paste the job description for this role',
+                    'Pick the AI provider you have a key for',
+                    'Generate — the CV is tailored to one lane, matching JD phrasing',
+                    'Copy or download the Markdown (ATS .docx / PDF export coming)',
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-3 text-xs text-slate-400">
+                      <span className="w-5 h-5 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400 shrink-0 mt-0.5">{i + 1}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <div className="pt-3 border-t border-slate-800/70 flex items-start gap-2">
+                  <Key className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    BYOK: your key stays in the browser and is sent only in the request header — never stored on any server.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

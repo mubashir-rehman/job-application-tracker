@@ -4,6 +4,7 @@ import { JobApplication } from './types';
 import { StatsGrid } from './components/StatsGrid';
 import { PerformanceTelemetry } from './components/PerformanceTelemetry';
 import { ApplicationTable } from './components/ApplicationTable';
+import { ResumeBuilder } from './components/ResumeBuilder';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
 import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, EyeOff, Sun, Moon, Settings, User } from 'lucide-react';
@@ -105,7 +106,9 @@ export default function App() {
     { id: 'profile',   label: 'Open Profile',                                      icon: User,                         run: () => setIsProfileOpen(true) },
   ];
 
-  const topBar = (
+  const isResume = activeView === 'resume';
+
+  const appsTopBar = (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <h1 className="text-xl font-black font-display text-slate-100 tracking-tight truncate">Application Pipeline</h1>
@@ -143,6 +146,10 @@ export default function App() {
     </div>
   );
 
+  const resumeTopBar = (
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Resume Builder</h1>
+  );
+
   return (
     <>
       <AppShell
@@ -160,8 +167,8 @@ export default function App() {
         onChangeView={setActiveView}
         onNewApplication={() => setIsNewAppOpen(true)}
         onRefresh={refreshFromCloud}
-        topBar={topBar}
-        detailPane={paneOpen ? (
+        topBar={isResume ? resumeTopBar : appsTopBar}
+        detailPane={!isResume && paneOpen ? (
           <DetailSlideOver
             application={selectedApplication}
             isOpen
@@ -171,6 +178,7 @@ export default function App() {
           />
         ) : undefined}
       >
+        {isResume ? <ResumeBuilder /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
@@ -212,6 +220,7 @@ export default function App() {
             compact={paneOpen}
           />
         </div>
+        </>}
       </AppShell>
 
       {/* ── OVERLAYS ─────────────────────────────────────── */}
