@@ -45,10 +45,19 @@ export function useApplications(user: SupabaseUser | null) {
       if (isSupabaseConfigured) {
         try {
           const cloudData = await supabaseService.fetchApplications(user?.id);
-          if (cloudData && cloudData.length > 0) {
+          if (user) {
+            // Signed in: the cloud is the source of truth. Use the result as-is —
+            // even when empty — and refresh the local mirror. Never fall back to
+            // stale localStorage here, which could resurrect old sample apps cached
+            // by earlier builds (only a fetch *error* below uses the offline backup).
+            const cloud = cloudData ?? [];
+            setApplications(cloud);
+            localStorage.setItem(key, JSON.stringify(cloud));
+          } else if (cloudData && cloudData.length > 0) {
             setApplications(cloudData);
             localStorage.setItem(key, JSON.stringify(cloudData));
           } else {
+            // Guest: localStorage is the only store.
             loadLocalFallback();
           }
         } catch (err: unknown) {
