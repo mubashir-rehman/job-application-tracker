@@ -12,6 +12,7 @@ import health from '../api/health';
 import tailor from '../api/resume/tailor';
 import importResume from '../api/resume/import';
 import jdParse from '../api/jd/parse';
+import jdScore from '../api/jd/score';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -31,6 +32,7 @@ app.all('/api/health', mount(health));
 app.all('/api/resume/tailor', mount(tailor));
 app.all('/api/resume/import', mount(importResume));
 app.all('/api/jd/parse', mount(jdParse));
+app.all('/api/jd/score', mount(jdScore));
 
 const port = Number(process.env.API_PORT) || 3001;
 app.listen(port, () => {

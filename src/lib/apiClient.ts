@@ -114,6 +114,37 @@ export async function parseJd(p: ParseJdParams): Promise<ParseJdResult> {
   return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl, enrich: p.enrich }, headers);
 }
 
+export type Recommendation = 'skip' | 'stretch' | 'apply';
+
+export interface ScoreResult {
+  score: number;
+  recommendation: Recommendation;
+  matched: string[];
+  missing: string[];
+  strengths: string[];
+  gaps: string[];
+  rationale: string;
+  usedLLM: boolean;
+}
+
+export interface ScoreMatchParams {
+  masterMd: string;
+  jdText: string;
+  // Optional BYOK config — omit to run keyword-coverage only (no LLM).
+  provider?: Provider;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+}
+
+// Score a master CV against a job description (Stage 3). Works with or without a key.
+export async function scoreMatch(p: ScoreMatchParams): Promise<ScoreResult> {
+  const headers: Record<string, string> = p.provider && p.apiKey
+    ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
+    : {};
+  return postJson<ScoreResult>('/api/jd/score', { masterMd: p.masterMd, jdText: p.jdText }, headers);
+}
+
 export async function apiHealth(): Promise<{ ok: boolean }> {
   const res = await fetch('/api/health');
   return res.json();

@@ -51,6 +51,14 @@ export async function fetchUrlText(url: string, maxChars = 14000): Promise<strin
     throw new FetchTextError('Only http(s) URLs are supported');
   }
 
+  // Auth-walled feed URLs that 200 but never expose a JD to a server fetch.
+  // A LinkedIn job feed link (collections/recommended, /feed, ?currentJobId) is
+  // personalized and login-gated — point the user at the public posting instead.
+  const host = parsed.hostname.replace(/^www\./, '');
+  if (host.endsWith('linkedin.com') && (/\/jobs\/collections|\/feed/.test(parsed.pathname) || parsed.searchParams.has('currentJobId'))) {
+    throw new FetchTextError('LinkedIn feed links are private and can’t be read — open the job and use its “/jobs/view/…” link, or paste the description text.', 422);
+  }
+
   let res: Response;
   try {
     res = await fetch(parsed.toString(), {
@@ -73,5 +81,11 @@ export async function fetchUrlText(url: string, maxChars = 14000): Promise<strin
   const ctype = res.headers.get('content-type') || '';
   const body = await res.text();
   const text = ctype.includes('html') ? htmlToText(body) : body.trim();
+
+  // A login wall / JS shell returns 200 with almost no readable text. Treat that
+  // as unfetchable so the caller falls back to pasted text rather than parsing junk.
+  if (text.length < 200) {
+    throw new FetchTextError('The page returned no readable job text (likely a login wall or JavaScript app) — paste the description text instead.', 422);
+  }
   return text.slice(0, maxChars);
 }

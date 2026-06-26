@@ -158,7 +158,9 @@ async function callGemini({ apiKey, prompt, system, model, maxTokens }: LLMOptio
       body: JSON.stringify({
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: maxTokens ?? 2000 },
+        // thinkingBudget:0 — gemini-2.5-flash is a thinking model; without this a
+        // small maxOutputTokens is consumed by reasoning and the answer comes back empty.
+        generationConfig: { maxOutputTokens: maxTokens ?? 2000, thinkingConfig: { thinkingBudget: 0 } },
       }),
     },
   );
