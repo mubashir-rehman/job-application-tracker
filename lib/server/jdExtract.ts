@@ -57,7 +57,10 @@ function labeled(lines: string[], labels: string[]): string | null {
 
 function detectWorkModel(hay: string): WorkModel | undefined {
   if (/\bhybrid\b/i.test(hay)) return 'Hybrid';
-  if (/\b(remote|work from home|wfh|fully[- ]?remote|distributed team)\b/i.test(hay)) return 'Remote';
+  // Bare "remote" must be a work arrangement, not part of a proper noun like a
+  // company named "Remote Roles" — so require it NOT to be followed by another
+  // capitalized word ([A-Z] kept case-sensitive; the multi-word forms stay /i).
+  if (/\b(?:work from home|wfh|fully[- ]?remote|distributed team)\b/i.test(hay) || /\b[Rr]emote\b(?!\s+[A-Z])/.test(hay)) return 'Remote';
   if (/\b(on[- ]?site|in[- ]?office|in[- ]?person)\b/i.test(hay)) return 'Onsite';
   return undefined;
 }
@@ -95,17 +98,29 @@ function detectAppliedVia(text: string, url?: string): AppliedVia | undefined {
 }
 
 // Prose company/role: "<Company> is hiring/looking for a <role>", "Join <Company> as <role>".
-function detectProseCompanyRole(text: string, lines: string[]): { company?: string; role?: string } {
+function detectProseCompanyRole(text: string, lines: string[]): { company?: string; role?: string; location?: string } {
   let company: string | undefined;
   let role: string | undefined;
+  let location: string | undefined;
 
-  const hiring = text.match(/\b([A-Z][\w.&'’\- ]{1,40}?)\s+is\s+(?:currently\s+)?(?:on the lookout for|looking for|seeking|hiring|searching for|recruiting)\s+(?:a |an |the )?(.+?)(?:\s+to join| for our team| for its| at | who | with |\.|\n|$)/i);
-  if (hiring) { company = clean(hiring[1]); role = clean(hiring[2]); }
+  // " in " is a role boundary so a trailing "... in <City>" doesn't bleed into the title.
+  const hiring = text.match(/\b([A-Z][\w.&'’\- ]{1,40}?)\s+is\s+(?:currently\s+)?(?:on the lookout for|looking for|seeking|hiring|searching for|recruiting)\s+(?:a |an |the )?(.+?)(?:\s+to join| for our team| for its| at | in | who | with |\.|\n|$)/i);
+  if (hiring) {
+    company = clean(hiring[1]);
+    role = clean(hiring[2]);
+    // Location from the rest of the hiring sentence: "... in <City>" (capitalized).
+    const tail = text.slice(hiring.index || 0).split(/[.\n]/)[0];
+    const lm = tail.match(/\bin\s+([A-Z][A-Za-z.\-' ]{1,30}?)\s*$/);
+    if (lm) location = clean(lm[1]);
+  }
 
   if (!company) {
     const join = text.match(/\bjoin\s+([A-Z][\w.&'’\- ]{1,40}?)\s+as\s+(?:a |an )?(.+?)(?:\.|,|\n|$)/i);
     if (join) { company = clean(join[1]); role = clean(join[2]); }
   }
+
+  // Drop recruiter framing so "Our client Acme" → "Acme".
+  if (company) company = clean(company.replace(/^(?:our\s+(?:client|customer|partner)|the\s+company|a\s+company\s+called|client)\s+/i, ''));
 
   // Role inside a "hiring a <Title>" phrase (catches one-liners w/o a company).
   if (!role) {
@@ -126,7 +141,7 @@ function detectProseCompanyRole(text: string, lines: string[]): { company?: stri
       role = clean(first.replace(/\bapply now!?$/i, ''));
     }
   }
-  return { company, role };
+  return { company, role, location };
 }
 
 function titleCase(s: string): string {
@@ -160,6 +175,7 @@ const TECH = [
   'vector databases', 'vector database', 'prompt engineering', 'RAG', 'LLMs', 'LLM',
   'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'Distributed Systems', 'Microservices', 'System Design', 'Serverless',
   'Tailwind', 'HL7', 'FHIR', 'Mirth Connect', 'Nginx', 'Linux', 'Bash', 'Agile', 'Scrum', 'Go',
+  'Stripe', 'Twilio',
 ];
 
 const TECH_NORMALIZE: Record<string, string> = {
@@ -198,10 +214,12 @@ export function deterministicExtract(text: string, url?: string): DeterministicR
   if (companyLabeled) fields.companyName = companyLabeled;
   if (roleLabeled) fields.targetRole = roleLabeled;
 
+  let proseLocation: string | undefined;
   if (!fields.companyName || !fields.targetRole) {
     const prose = detectProseCompanyRole(text, lines);
     if (!fields.companyName && prose.company) fields.companyName = prose.company;
     if (!fields.targetRole && prose.role) fields.targetRole = prose.role;
+    proseLocation = prose.location;
   }
   if (!fields.companyName) {
     const ats = companyFromAtsUrl(text, url);
@@ -212,6 +230,7 @@ export function deterministicExtract(text: string, url?: string): DeterministicR
   const wm = detectWorkModel(`${labeled(lines, ['work model', 'work type', 'employment type', 'job type', 'workplace type', 'arrangement', 'type']) || ''} ${text}`);
   if (wm) fields.workModel = wm;
   if (locLabeled) fields.location = locLabeled;
+  else if (proseLocation) fields.location = proseLocation;
   else if (wm === 'Remote') fields.location = 'Remote';
 
   const salary = detectSalary(text, labeled(lines, ['salary', 'compensation', 'pay', 'pay range', 'salary range', 'ctc', 'budget', 'rate']));
