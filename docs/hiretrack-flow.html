@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HireTrack — How It Works</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1568px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #818cf8; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 1520px; display: block; }
+    .legend { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin-top: 1.25rem; padding: 0 0.25rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-size: 0.7rem; }
+    .swatch { width: 18px; height: 11px; border-radius: 3px; border: 1.5px solid; flex-shrink: 0; }
+    .swatch.round { border-radius: 7px; }
+    .swatch.diamond { width: 11px; height: 11px; transform: rotate(45deg); border-radius: 2px; }
+    .swatch.dashed { background: transparent !important; border-style: dashed; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; } .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; } .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; } .card-dot.indigo { background: #818cf8; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+    .toolbar { display: flex; gap: 0.5rem; margin-left: auto; flex-shrink: 0; align-items: center; }
+    .toolbar-toggle { background: transparent; border: none; color: #475569; cursor: pointer; font-size: 1.25rem; line-height: 1; padding: 0.25rem 0.5rem; border-radius: 0.375rem; transition: color 0.2s, background 0.2s; }
+    .toolbar-toggle:hover { color: #94a3b8; background: rgba(30, 41, 59, 0.5); }
+    .toolbar-actions { display: none; gap: 0.5rem; }
+    .toolbar.expanded .toolbar-actions { display: flex; }
+    .toolbar-actions button { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; color: #94a3b8; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .toolbar-actions button:hover { background: rgba(51, 65, 85, 0.8); color: white; border-color: #475569; }
+    @media print { body { background: #020617; padding: 1rem; } .toolbar { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="container" id="report-container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>HireTrack — How It Works</h1>
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <button onclick="copyAsImage(this)">📋 Copy</button>
+            <button onclick="downloadPNG(this)">🖼️ PNG</button>
+            <button onclick="downloadPDF(this)">📄 PDF</button>
+          </div>
+          <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="Export options" aria-label="Export options">⋯</button>
+        </div>
+      </div>
+      <p class="subtitle">Track applications through a 7-phase pipeline, tailor an ATS-ready resume for each role, and grow an interview knowledge bank — all in your browser, bring-your-own-key.</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1520 1080">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b" /></marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" /></marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#34d399" /></marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" /></marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" /></marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" /></marker>
+          <marker id="arrowhead-indigo" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#818cf8" /></marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ===== DATA & KEYS BAND (prerequisites) ===== -->
+        <rect x="30" y="20" width="1460" height="74" rx="8" fill="rgba(30, 41, 59, 0.25)" stroke="#64748b" stroke-width="1" stroke-dasharray="6,4"/>
+        <text x="50" y="44" fill="#94a3b8" font-size="11" font-weight="700">YOUR DATA &amp; KEYS — bring your own, nothing leaves without you</text>
+        <text x="50" y="70" fill="#cbd5e1" font-size="9.5">🔑 BYOK API key — kept in your browser, sent only in a request header, never stored or logged</text>
+        <text x="760" y="70" fill="#cbd5e1" font-size="9.5">☁️ Supabase cloud sync + localStorage mirror — works offline &amp; in guest mode</text>
+        <text x="1250" y="70" fill="#cbd5e1" font-size="9.5">📲 Installable PWA</text>
+
+        <!-- ===== BAND LABELS ===== -->
+        <text x="30" y="142" fill="#475569" font-size="11" font-weight="700">1 · CAPTURE</text>
+        <text x="30" y="432" fill="#475569" font-size="11" font-weight="700">2 · TAILOR &amp; EXPORT</text>
+        <text x="30" y="722" fill="#475569" font-size="11" font-weight="700">3 · TRACK &amp; LEARN</text>
+
+        <!-- ===== START ===== -->
+        <rect x="20" y="178" width="130" height="40" rx="20" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="2"/>
+        <text x="85" y="203" fill="white" font-size="11" font-weight="600" text-anchor="middle">New role</text>
+        <line x1="150" y1="198" x2="185" y2="198" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+
+        <!-- ===== ROW 1 ===== -->
+        <!-- S1 Add Application (manual) -->
+        <circle cx="204" cy="132" r="11" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/><text x="204" y="136" fill="white" font-size="10" font-weight="600" text-anchor="middle">1</text>
+        <text x="290" y="138" fill="#34d399" font-size="10" text-anchor="middle">👤 You</text>
+        <rect x="190" y="150" width="200" height="96" rx="8" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="290" y="184" fill="white" font-size="12" font-weight="600" text-anchor="middle">Add Application</text>
+        <text x="290" y="206" fill="#94a3b8" font-size="9" text-anchor="middle">Paste JD text or URL —</text>
+        <text x="290" y="222" fill="#94a3b8" font-size="9" text-anchor="middle">company, role, status</text>
+        <line x1="390" y1="198" x2="515" y2="198" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="452" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">capture</text>
+
+        <!-- S2 JD Autofill (automated) -->
+        <circle cx="534" cy="132" r="11" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/><text x="534" y="136" fill="white" font-size="10" font-weight="600" text-anchor="middle">2</text>
+        <text x="620" y="138" fill="#a78bfa" font-size="10" text-anchor="middle">⚡ Auto · BYOK</text>
+        <rect x="520" y="150" width="200" height="96" rx="8" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="620" y="184" fill="white" font-size="12" font-weight="600" text-anchor="middle">JD Autofill</text>
+        <text x="620" y="206" fill="#94a3b8" font-size="9" text-anchor="middle">LLM extracts the fields;</text>
+        <text x="620" y="222" fill="#94a3b8" font-size="9" text-anchor="middle">regex fallback, no key</text>
+        <line x1="720" y1="198" x2="845" y2="198" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <text x="782" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">enrich</text>
+
+        <!-- S3 Company Research (integration) -->
+        <circle cx="864" cy="132" r="11" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/><text x="864" y="136" fill="white" font-size="10" font-weight="600" text-anchor="middle">3</text>
+        <text x="950" y="138" fill="#fbbf24" font-size="10" text-anchor="middle">🔗 serper.dev / Gemini</text>
+        <rect x="850" y="150" width="200" height="96" rx="8" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="950" y="184" fill="white" font-size="12" font-weight="600" text-anchor="middle">Company Research</text>
+        <text x="950" y="206" fill="#94a3b8" font-size="9" text-anchor="middle">Website, summary,</text>
+        <text x="950" y="222" fill="#94a3b8" font-size="9" text-anchor="middle">market-salary hint</text>
+        <line x1="1050" y1="198" x2="1175" y2="198" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <text x="1112" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">evaluate</text>
+
+        <!-- S4 Match Score (decision) -->
+        <circle cx="1194" cy="132" r="11" fill="#1e293b" stroke="#fb7185" stroke-width="1.5"/><text x="1194" y="136" fill="white" font-size="10" font-weight="600" text-anchor="middle">4</text>
+        <text x="1280" y="138" fill="#fb7185" font-size="10" text-anchor="middle">⚖️ Score</text>
+        <rect x="1180" y="150" width="200" height="96" rx="8" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="1280" y="184" fill="white" font-size="12" font-weight="600" text-anchor="middle">Match Score</text>
+        <text x="1280" y="206" fill="#94a3b8" font-size="9" text-anchor="middle">Coverage + verdict:</text>
+        <text x="1280" y="222" fill="#94a3b8" font-size="9" text-anchor="middle">apply · stretch · skip</text>
+
+        <!-- Wrap R1 -> R2 (into Tailor) -->
+        <path d="M 1280 246 L 1280 345 L 550 345 L 550 436" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowhead)"/>
+        <text x="915" y="338" fill="#94a3b8" font-size="9" text-anchor="middle">worth applying → tailor a resume</text>
+
+        <!-- ===== ROW 2 ===== -->
+        <!-- Master CV (prerequisite / source) -->
+        <text x="290" y="428" fill="#94a3b8" font-size="10" text-anchor="middle">📄 Source of truth</text>
+        <rect x="190" y="440" width="200" height="96" rx="8" fill="rgba(30, 41, 59, 0.45)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="290" y="474" fill="white" font-size="12" font-weight="600" text-anchor="middle">Master CV</text>
+        <text x="290" y="496" fill="#94a3b8" font-size="9" text-anchor="middle">Paste once, or import</text>
+        <text x="290" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">PDF · DOCX · MD · TXT</text>
+        <line x1="390" y1="488" x2="515" y2="488" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="452" y="480" fill="#94a3b8" font-size="8" text-anchor="middle">feeds</text>
+
+        <!-- S5 Tailor (automated) -->
+        <circle cx="534" cy="422" r="11" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/><text x="534" y="426" fill="white" font-size="10" font-weight="600" text-anchor="middle">5</text>
+        <rect x="520" y="440" width="200" height="96" rx="8" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="620" y="474" fill="white" font-size="12" font-weight="600" text-anchor="middle">Tailor Resume</text>
+        <text x="620" y="496" fill="#94a3b8" font-size="9" text-anchor="middle">Truth-only, one lane</text>
+        <text x="620" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">+ honesty &amp; inventory</text>
+        <line x1="720" y1="488" x2="845" y2="488" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <text x="782" y="480" fill="#94a3b8" font-size="8" text-anchor="middle">resume</text>
+
+        <!-- S6 Render (integration) -->
+        <circle cx="864" cy="422" r="11" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/><text x="864" y="426" fill="white" font-size="10" font-weight="600" text-anchor="middle">6</text>
+        <text x="950" y="428" fill="#fbbf24" font-size="10" text-anchor="middle">🖨️ In-browser</text>
+        <rect x="850" y="440" width="200" height="96" rx="8" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="950" y="474" fill="white" font-size="12" font-weight="600" text-anchor="middle">Render</text>
+        <text x="950" y="496" fill="#94a3b8" font-size="9" text-anchor="middle">.docx (ATS-safe),</text>
+        <text x="950" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">PDF · Markdown</text>
+        <line x1="1050" y1="488" x2="1175" y2="488" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <text x="1112" y="480" fill="#94a3b8" font-size="8" text-anchor="middle">verify</text>
+
+        <!-- S7 ATS Check (automated) -->
+        <circle cx="1194" cy="422" r="11" fill="#1e293b" stroke="#a78bfa" stroke-width="1.5"/><text x="1194" y="426" fill="white" font-size="10" font-weight="600" text-anchor="middle">7</text>
+        <text x="1280" y="428" fill="#a78bfa" font-size="10" text-anchor="middle">✅ Deterministic</text>
+        <rect x="1180" y="440" width="200" height="96" rx="8" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="1280" y="474" fill="white" font-size="12" font-weight="600" text-anchor="middle">ATS Check</text>
+        <text x="1280" y="496" fill="#94a3b8" font-size="9" text-anchor="middle">Score 0–100: keywords,</text>
+        <text x="1280" y="512" fill="#94a3b8" font-size="9" text-anchor="middle">sections, contact</text>
+
+        <!-- Wrap R2 -> R3 (into Track) -->
+        <path d="M 1280 536 L 1280 635 L 220 635 L 220 726" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowhead)"/>
+        <text x="750" y="628" fill="#94a3b8" font-size="9" text-anchor="middle">submit &amp; start tracking</text>
+
+        <!-- ===== ROW 3 ===== -->
+        <!-- S8 Track Pipeline (manual) -->
+        <circle cx="204" cy="712" r="11" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/><text x="204" y="716" fill="white" font-size="10" font-weight="600" text-anchor="middle">8</text>
+        <rect x="190" y="730" width="200" height="96" rx="8" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="290" y="764" fill="white" font-size="12" font-weight="600" text-anchor="middle">Track Pipeline</text>
+        <text x="290" y="786" fill="#94a3b8" font-size="9" text-anchor="middle">7-phase interview spine,</text>
+        <text x="290" y="802" fill="#94a3b8" font-size="9" text-anchor="middle">velocity nudges · swipe</text>
+        <line x1="390" y1="778" x2="515" y2="778" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="452" y="770" fill="#94a3b8" font-size="8" text-anchor="middle">interviews</text>
+
+        <!-- S9 Interview Retros (manual) -->
+        <circle cx="534" cy="712" r="11" fill="#1e293b" stroke="#34d399" stroke-width="1.5"/><text x="534" y="716" fill="white" font-size="10" font-weight="600" text-anchor="middle">9</text>
+        <text x="620" y="718" fill="#34d399" font-size="10" text-anchor="middle">👤 Per phase</text>
+        <rect x="520" y="730" width="200" height="96" rx="8" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="620" y="764" fill="white" font-size="12" font-weight="600" text-anchor="middle">Interview Retros</text>
+        <text x="620" y="786" fill="#94a3b8" font-size="9" text-anchor="middle">Wins, risks,</text>
+        <text x="620" y="802" fill="#94a3b8" font-size="9" text-anchor="middle">skill gaps</text>
+        <line x1="720" y1="778" x2="885" y2="778" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="803" y="770" fill="#94a3b8" font-size="8" text-anchor="middle">outcome</text>
+
+        <!-- Outcome decision -->
+        <g transform="translate(950, 778)">
+          <rect x="-42" y="-42" width="84" height="84" rx="4" transform="rotate(45)" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="0" y="5" fill="white" font-size="11" font-weight="600" text-anchor="middle">Result?</text>
+        </g>
+        <!-- to Offer -->
+        <path d="M 1000 745 L 1100 731 L 1175 731" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="1075" y="718" fill="#34d399" font-size="9" font-weight="600" text-anchor="middle">offer</text>
+        <rect x="1180" y="711" width="160" height="40" rx="20" fill="rgba(8, 51, 68, 0.4)" stroke="#34d399" stroke-width="2"/>
+        <text x="1260" y="736" fill="white" font-size="11" font-weight="600" text-anchor="middle">🎉 Offer</text>
+        <!-- to Rejected -->
+        <path d="M 1000 811 L 1100 825 L 1175 825" fill="none" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+        <text x="1075" y="845" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">no / closed</text>
+        <rect x="1180" y="805" width="160" height="40" rx="20" fill="rgba(30, 41, 59, 0.45)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="1260" y="830" fill="white" font-size="10" font-weight="600" text-anchor="middle">Rejected / archive</text>
+
+        <!-- ===== KNOWLEDGE BANK HUB ===== -->
+        <rect x="190" y="960" width="1190" height="86" rx="10" fill="rgba(49, 46, 129, 0.45)" stroke="#818cf8" stroke-width="2"/>
+        <text x="212" y="992" fill="#c7d2fe" font-size="13" font-weight="700">🧠 KNOWLEDGE BANK — your interview memory, auto-populated</text>
+        <text x="212" y="1015" fill="#a5b4fc" font-size="9.5">Gaps to close · strengths to lean on · improvements — grouped by competency, tracked open → in-progress → resolved</text>
+        <text x="212" y="1033" fill="#818cf8" font-size="9.5">It sharpens every future tailor (positioning) and every interview prep.</text>
+
+        <!-- KB inbound: Tailor notes -> KB -->
+        <path d="M 560 536 L 560 600 L 455 600 L 455 956" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead-indigo)"/>
+        <text x="448" y="664" fill="#a5b4fc" font-size="8" text-anchor="end">honesty notes → gaps</text>
+        <text x="448" y="677" fill="#a5b4fc" font-size="8" text-anchor="end">inventory → strengths</text>
+
+        <!-- KB inbound: Retros -> KB -->
+        <path d="M 650 826 L 650 956" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead-indigo)"/>
+        <text x="665" y="892" fill="#a5b4fc" font-size="8">wins → strengths</text>
+        <text x="665" y="905" fill="#a5b4fc" font-size="8">risks &amp; gaps → improvements</text>
+
+        <!-- KB outbound: -> Tailor (loop) -->
+        <path d="M 880 960 L 880 605 L 680 605 L 680 540" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead-indigo)"/>
+        <text x="785" y="598" fill="#a5b4fc" font-size="8" text-anchor="middle">sharpens next tailor &amp; prep</text>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch round" style="background:rgba(8,51,68,0.4);border-color:#22d3ee"></span>Start / End</div>
+      <div class="legend-item"><span class="swatch" style="background:rgba(6,78,59,0.4);border-color:#34d399"></span>You (manual)</div>
+      <div class="legend-item"><span class="swatch" style="background:rgba(76,29,149,0.4);border-color:#a78bfa"></span>Automated · BYOK / deterministic</div>
+      <div class="legend-item"><span class="swatch" style="background:rgba(120,53,15,0.3);border-color:#fbbf24"></span>Integration / export</div>
+      <div class="legend-item"><span class="swatch diamond" style="background:rgba(136,19,55,0.4);border-color:#fb7185"></span>Decision</div>
+      <div class="legend-item"><span class="swatch dashed" style="border-color:#94a3b8"></span>Source / prerequisite</div>
+      <div class="legend-item"><span class="swatch dashed" style="border-color:#818cf8"></span>Knowledge-bank loop</div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot indigo"></div><h3>Bring your own everything</h3></div>
+        <ul>
+          <li>• API key lives in your browser; sent only in a request header</li>
+          <li>• Never written to a database or a log</li>
+          <li>• Resume rendering &amp; ATS check run fully client-side</li>
+          <li>• Works offline / guest; Supabase sync is optional</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot violet"></div><h3>Two engines</h3></div>
+        <ul>
+          <li>• Key-free deterministic path: autofill, scoring, ATS check</li>
+          <li>• BYOK LLM path: 5 providers (Anthropic, OpenAI, Gemini, MiMo, custom)</li>
+          <li>• Truth-only tailoring — one lane, no invented skills or metrics</li>
+          <li>• serper.dev web search for company research</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot emerald"></div><h3>The learning loop</h3></div>
+        <ul>
+          <li>• Tailoring surfaces honesty gaps + defensible strengths</li>
+          <li>• Interview retros log wins, risks and skill gaps per phase</li>
+          <li>• Both feed the Knowledge Bank (suggest-and-confirm, deduped)</li>
+          <li>• Which sharpens the next resume and interview prep</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">HireTrack • application tracker + AI resume builder • generated 2026-06-27</p>
+  </div>
+
+  <script>
+    async function copyAsImage(btn) {
+      const orig = btn.textContent;
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        btn.textContent = '✓ Copied!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => btn.textContent = orig, 2000);
+    }
+    async function downloadPNG(btn) {
+      const orig = btn.textContent; btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const link = document.createElement('a'); link.download = 'hiretrack-flow.png'; link.href = canvas.toDataURL('image/png'); link.click();
+        btn.textContent = '✓ Done!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => btn.textContent = orig, 2000);
+    }
+    async function downloadPDF(btn) {
+      const orig = btn.textContent; btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
+        const pdf = new jsPDF({ orientation, unit: 'px', format: [canvas.width, canvas.height], hotfixes: ['px_scaling'] });
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('hiretrack-flow.pdf');
+        btn.textContent = '✓ Done!';
+      } catch (e) { btn.textContent = '✗ Failed'; }
+      setTimeout(() => btn.textContent = orig, 2000);
+    }
+  </script>
+</body>
+</html>
