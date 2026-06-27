@@ -5,7 +5,7 @@ import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Wand2, Clock,
   Copy, Download, Check, FileUp, Server, ShieldCheck, Printer,
-  Briefcase, Trash2, Eye, BookOpen,
+  Briefcase, Trash2, Eye, BookOpen, Gauge, X,
 } from 'lucide-react';
 import { JobApplication } from '../types';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
@@ -15,6 +15,7 @@ import { useKnowledgeBank } from '../hooks/useKnowledgeBank';
 import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
 import { splitTailored, downloadDocx, printPdf, extractHonestyGaps, extractInventoryStrengths } from '../lib/resumeRender';
+import { runAtsCheck, AtsReport } from '../lib/atsCheck';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
 import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
 
@@ -52,6 +53,9 @@ export function ResumeBuilder({
   const [kbSuggestions, setKbSuggestions] = useState<{ text: string; kind: KbKind }[]>([]);
   const [selectedKb, setSelectedKb]       = useState<Set<string>>(new Set());
   const [kbAdded, setKbAdded]             = useState(0);
+
+  // Stage 6 — deterministic ATS check on the generated resume (client-side, no LLM).
+  const [atsReport, setAtsReport] = useState<AtsReport | null>(null);
 
   // Master-CV import (upload pdf/docx/md/txt → markdown)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +153,8 @@ export function ResumeBuilder({
     try {
       const md = await tailorResume({ ...callConfig(), masterMd, jdText });
       setResult(md);
+      // Run the ATS check on the resume body only (coaching sections stripped).
+      setAtsReport(runAtsCheck(splitTailored(md).resumeMd, jdText));
       // Save to history — linked to the chosen job, or local-only for quick paste.
       const job = selectedJobId ? applications.find(x => x.id === selectedJobId) : undefined;
       const label = job ? jobTitle(job) : (jdText.trim().split('\n').find(Boolean)?.slice(0, 60) || 'Quick tailor');
@@ -511,6 +517,45 @@ export function ResumeBuilder({
               </div>
             )}
 
+            {/* Stage 6 — ATS check (deterministic, client-side; resume never leaves the browser) */}
+            {atsReport && (() => {
+              const tone = atsReport.rating === 'Strong'
+                ? { ring: 'border-emerald-900/40', text: 'text-emerald-300', bar: 'bg-emerald-500' }
+                : atsReport.rating === 'Workable'
+                ? { ring: 'border-amber-900/40', text: 'text-amber-300', bar: 'bg-amber-500' }
+                : { ring: 'border-rose-900/40', text: 'text-rose-300', bar: 'bg-rose-500' };
+              const statusIcon = (s: string) =>
+                s === 'pass' ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
+                : s === 'warn' ? <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-px" />
+                : <X className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" />;
+              return (
+                <div className={`glass-panel p-5 rounded-2xl border ${tone.ring} space-y-3`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold text-slate-100 flex items-center gap-2">
+                      <Gauge className="w-4 h-4 text-indigo-400" /> ATS check
+                    </h3>
+                    <span className={`text-[11px] font-black ${tone.text}`}>{atsReport.score}/100 · {atsReport.rating}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div className={`h-full ${tone.bar} rounded-full transition-all`} style={{ width: `${atsReport.score}%` }} />
+                  </div>
+                  <ul className="space-y-1.5">
+                    {atsReport.items.map(it => (
+                      <li key={it.id} className="flex items-start gap-2 text-[11px] text-slate-300 leading-relaxed">
+                        {statusIcon(it.status)}
+                        <span><span className="font-bold text-slate-200">{it.label}.</span> {it.detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {atsReport.missingKeywords.length > 0 && (
+                    <p className="text-[10px] text-slate-500 leading-relaxed pt-1 border-t border-slate-800/70">
+                      Only add a missing keyword if you can defend it in an interview — never to game the parser.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Knowledge-Bank suggestions: gaps (Honesty Notes) + strengths (Inventory) */}
             {kbSuggestions.length > 0 && (
               <div className="glass-panel p-5 rounded-2xl border border-amber-900/40 space-y-3">
@@ -587,7 +632,7 @@ export function ResumeBuilder({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => { setResult(t.contentMd); setActiveTab('generate'); }}
+                    onClick={() => { setResult(t.contentMd); setAtsReport(null); setActiveTab('generate'); }}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition"
                     aria-label="View resume"
                   >
