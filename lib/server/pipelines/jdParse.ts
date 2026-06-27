@@ -1,12 +1,12 @@
 // JD-parse pipeline as a LangGraph StateGraph. Runs in-process inside one
 // serverless request (free-tier friendly: no checkpointer, no LangGraph Server).
 //
-//   ingest ─→ deterministic ─→ [route] ──skip──→ finalize
-//                                 │ (core fields missing & key present)
-//                                 └─→ llm (gap-fill only) ─→ finalize
+//   ingest ─→ [route] ──key──→ llm (full extraction, regex backstop) ─→ finalize
+//                 └──no key──→ deterministic (regex/heuristics) ───────→ finalize
 //
-// The LLM node is skipped entirely for well-structured posts, and the whole
-// graph runs key-less (deterministic-only) when no API key is supplied.
+// With an API key the LLM owns extraction (regex is too brittle for the long tail
+// of JD phrasings); deterministic is the key-less path and the safety net if the
+// LLM call or its JSON parse fails.
 import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
 import { Provider, callLLM, callLLMWithSearch, SearchUnsupportedError } from '../llm.js';
 import { serperSearch } from '../search.js';
@@ -25,25 +25,33 @@ export interface JdResearch {
   error?: string;            // search failed (e.g. out of credits)
 }
 
-// The fields the LLM may fill (provider's own keys excluded — those are inferred).
-const LLM_FILLABLE = ['companyName', 'targetRole', 'workModel', 'location', 'salaryRange', 'otherBenefits', 'hrContact', 'keyRequirements'] as const;
+// Content fields the LLM extracts in full. `appliedVia` is intentionally excluded
+// (it's inferred from the source URL/host, not the JD prose — left to deterministic).
+const LLM_KEYS = ['companyName', 'targetRole', 'workModel', 'location', 'salaryRange', 'otherBenefits', 'hrContact', 'keyRequirements', 'techTags'] as const;
+const WORK_MODELS = new Set(['Remote', 'Hybrid', 'Onsite']);
 
-const LLM_SYSTEM = `You extract missing fields from a job posting for an application tracker.
-Some fields were already found by deterministic parsing — do NOT change those.
-Return ONLY a JSON object containing exactly the requested missing keys (no prose, no code fences).
+const LLM_SYSTEM = `You extract structured fields from a job posting for an application tracker.
+Return ONLY a JSON object with exactly these keys (no prose, no code fences):
+{ "companyName", "targetRole", "workModel", "location", "salaryRange", "otherBenefits", "hrContact", "keyRequirements", "techTags" }
 
-Truth only — accuracy over completeness:
-- Use solely what the posting states. Unknown → null. Never invent a company,
-  role, salary, location, benefit, or recruiter.
-- NEVER guess or construct an email address. A recruiter/email goes in hrContact
-  ONLY if it literally appears in the posting; otherwise null.
-- salaryRange: copy posted pay VERBATIM (e.g. "$120k–$150k"). If no pay is posted,
-  null. NEVER estimate or infer a market rate.
-- companyName: the hiring company (not a job board or recruiting agency unless that
-  is the only employer named).
-- targetRole: the posted title, normalized casing, with req IDs stripped.
-- workModel: one of "Remote","Hybrid","Onsite" or null.
-- keyRequirements: a tight comma-separated digest of must-have skills/experience (≤ 25 words).`;
+Truth only — accuracy over completeness. Any field not stated → null (techTags → []):
+- companyName: the actual hiring company. If a recruiting agency posts for a client
+  ("Our client X is hiring …"), use the CLIENT (X), not the agency; strip framing
+  like "Our client".
+- targetRole: the posted job title only — normalized casing, req IDs stripped. Do
+  NOT include the location or trailing filler ("… in Lahore") in the title.
+- workModel: exactly one of "Remote","Hybrid","Onsite", or null. Base it on the
+  stated arrangement, NOT on a company name that merely contains the word "remote".
+- location: the job's city/region/country if stated; else null. "Remote" is a work
+  model, not a location.
+- salaryRange: the posted pay copied VERBATIM (e.g. "$120k–$150k", "$2,500 / month").
+  No pay posted → null. NEVER estimate or infer a market rate.
+- otherBenefits: posted perks/equity/benefits, briefly; else null.
+- hrContact: a recruiter name and/or email ONLY if it literally appears in the
+  posting. NEVER guess or construct an email. Else null.
+- keyRequirements: a tight comma-separated digest of must-have skills/experience (≤ 25 words).
+- techTags: array of concrete technologies/tools/frameworks named in the posting
+  (e.g. ["Django","GraphQL","PostgreSQL","Stripe"]) — skills only, no soft skills. Else [].`;
 
 const State = Annotation.Root({
   jdText: Annotation<string | undefined>(),
@@ -76,10 +84,11 @@ function deterministic(state: S): Partial<S> {
   return { fields, found };
 }
 
-// Route to the LLM only when the core fields are missing AND a key is available.
-function route(state: S): 'llm' | 'finalize' {
-  const haveCore = !!state.fields.companyName && !!state.fields.targetRole;
-  return state.apiKey && !haveCore ? 'llm' : 'finalize';
+// With a key, the LLM owns the extraction (regex is too brittle for the long tail
+// of JD phrasings). With no key — or if the LLM call/JSON-parse fails — we fall back
+// to the deterministic extractor so autofill still works key-free and never empty.
+function routeAfterIngest(state: S): 'llm' | 'deterministic' {
+  return state.apiKey ? 'llm' : 'deterministic';
 }
 
 function safeJson(raw: string): Record<string, any> | null {
@@ -90,35 +99,44 @@ function safeJson(raw: string): Record<string, any> | null {
   try { return JSON.parse(stripped.slice(start, end + 1)); } catch { return null; }
 }
 
+function usable(v: any): boolean {
+  return v != null && v !== '' && !(Array.isArray(v) && v.length === 0);
+}
+
 async function llm(state: S): Promise<Partial<S>> {
-  const missing = LLM_FILLABLE.filter((k) => state.fields[k] == null);
-  if (!missing.length) return { usedLLM: false };
-
-  const prompt = [
-    `Already found (do not change): ${JSON.stringify(state.fields)}`,
-    `Fill ONLY these missing fields as JSON keys: ${missing.join(', ')}`,
-    `JOB POSTING:\n${state.text.slice(0, 8000)}`,
-  ].join('\n\n');
-
-  const raw = await callLLM({
-    provider: state.provider || 'anthropic',
-    apiKey: state.apiKey!,
-    system: LLM_SYSTEM,
-    prompt,
-    model: state.model,
-    baseUrl: state.baseUrl,
-    maxTokens: 700,
-  });
-
-  const parsed = safeJson(raw);
-  const merged: JdFields = {};
-  if (parsed) {
-    for (const k of missing) {
-      const v = parsed[k];
-      if (v != null && v !== '' && !(Array.isArray(v) && v.length === 0)) (merged as any)[k] = v;
-    }
+  let parsed: Record<string, any> | null = null;
+  try {
+    const raw = await callLLM({
+      provider: state.provider || 'anthropic',
+      apiKey: state.apiKey!,
+      system: LLM_SYSTEM,
+      prompt: `JOB POSTING:\n${state.text.slice(0, 8000)}`,
+      model: state.model,
+      baseUrl: state.baseUrl,
+      maxTokens: 2000, // small JSON; fast providers (Gemini thinkingBudget:0 / Anthropic / OpenAI)
+                       // answer well within this. In-band reasoners (MiMo) may still exhaust it and
+                       // fall back to deterministic below — acceptable graceful degradation.
+    });
+    parsed = safeJson(raw);
+  } catch {
+    parsed = null;
   }
-  return { fields: merged, found: Object.keys(merged), usedLLM: true };
+
+  // Deterministic backstop: provides appliedVia (URL-based, not in the LLM output)
+  // and fills any field the LLM left null. It is also the full result if the LLM failed.
+  const det = deterministicExtract(state.text, state.jdUrl);
+  if (!parsed) return { fields: det.fields, found: det.found, usedLLM: false };
+
+  const fields: JdFields = {};
+  for (const k of LLM_KEYS) {
+    let v = parsed[k];
+    if (k === 'workModel' && v != null && !WORK_MODELS.has(v)) v = null; // enforce the enum
+    if (usable(v)) (fields as any)[k] = v;
+  }
+  for (const k of Object.keys(det.fields) as (keyof JdFields)[]) {
+    if (fields[k] == null) (fields as any)[k] = det.fields[k];
+  }
+  return { fields, found: Object.keys(fields), usedLLM: true };
 }
 
 function finalize(state: S): Partial<S> {
@@ -238,8 +256,8 @@ const graph = new StateGraph(State)
   .addNode('finalize', finalize)
   .addNode('enrichStep', enrichNode)
   .addEdge(START, 'ingest')
-  .addEdge('ingest', 'deterministic')
-  .addConditionalEdges('deterministic', route, { llm: 'llm', finalize: 'finalize' })
+  .addConditionalEdges('ingest', routeAfterIngest, { llm: 'llm', deterministic: 'deterministic' })
+  .addEdge('deterministic', 'finalize')
   .addEdge('llm', 'finalize')
   .addConditionalEdges('finalize', enrichRoute, { enrich: 'enrichStep', end: END })
   .addEdge('enrichStep', END)
