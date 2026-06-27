@@ -5,15 +5,16 @@ import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Wand2, Clock,
   Copy, Download, Check, FileUp, Server, ShieldCheck, Printer,
-  Briefcase, Trash2, Eye,
+  Briefcase, Trash2, Eye, BookOpen,
 } from 'lucide-react';
 import { JobApplication } from '../types';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
+import { useKnowledgeBank } from '../hooks/useKnowledgeBank';
 import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
-import { splitTailored, downloadDocx, printPdf } from '../lib/resumeRender';
+import { splitTailored, downloadDocx, printPdf, extractHonestyGaps, extractInventoryStrengths } from '../lib/resumeRender';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
 import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
 
@@ -34,6 +35,7 @@ export function ResumeBuilder({
 }) {
   const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
+  const { entries: kbEntries, addEntry: addKbEntry } = useKnowledgeBank(user);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [customCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
   const [selectedJobId, setSelectedJobId] = useState('');     // '' = quick paste (no job)
@@ -43,6 +45,13 @@ export function ResumeBuilder({
   const [copied, setCopied]           = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab]     = useState<'generate' | 'history'>('generate');
+
+  // Knowledge-Bank suggestions parsed from the tailor output: gaps (Honesty Notes)
+  // and strengths (Tailoring Inventory — what the resume led with for this role).
+  type KbKind = 'gap' | 'strength';
+  const [kbSuggestions, setKbSuggestions] = useState<{ text: string; kind: KbKind }[]>([]);
+  const [selectedKb, setSelectedKb]       = useState<Set<string>>(new Set());
+  const [kbAdded, setKbAdded]             = useState(0);
 
   // Master-CV import (upload pdf/docx/md/txt → markdown)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,6 +153,14 @@ export function ResumeBuilder({
       const job = selectedJobId ? applications.find(x => x.id === selectedJobId) : undefined;
       const label = job ? jobTitle(job) : (jdText.trim().split('\n').find(Boolean)?.slice(0, 60) || 'Quick tailor');
       onAddTailored({ jobId: selectedJobId || null, label, contentMd: md });
+      // Suggest Knowledge-Bank entries: gaps (Honesty Notes) + strengths (Inventory).
+      const sugg: { text: string; kind: KbKind }[] = [
+        ...extractHonestyGaps(md).map(text => ({ text, kind: 'gap' as const })),
+        ...extractInventoryStrengths(md).map(text => ({ text, kind: 'strength' as const })),
+      ];
+      setKbSuggestions(sugg);
+      setSelectedKb(new Set(sugg.map(s => s.text)));
+      setKbAdded(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed');
     } finally {
@@ -172,6 +189,28 @@ export function ResumeBuilder({
   const printPdfMd = (md: string) => {
     try { printPdf(splitTailored(md).resumeMd); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not open the print view'); }
+  };
+
+  const toggleKb = (text: string) =>
+    setSelectedKb(prev => { const n = new Set(prev); n.has(text) ? n.delete(text) : n.add(text); return n; });
+
+  // Add the selected suggestions to the Knowledge Bank (gap / strength entries),
+  // tagged with the job and deduped against existing entries by topic.
+  const addToKb = () => {
+    const job = selectedJobId ? applications.find(a => a.id === selectedJobId) : undefined;
+    const from = job ? jobTitle(job) : 'a tailored resume';
+    const existing = new Set(kbEntries.map(e => e.topic.trim().toLowerCase()));
+    let added = 0;
+    for (const s of kbSuggestions) {
+      if (!selectedKb.has(s.text)) continue;
+      const topic = s.text.length > 80 ? s.text.slice(0, 77).trimEnd() + '…' : s.text;
+      if (existing.has(topic.trim().toLowerCase())) continue; // dedupe
+      addKbEntry({ category: 'Tool Depth', kind: s.kind, topic, detail: `${s.kind === 'gap' ? 'Surfaced from' : 'Strength for'} ${from}. ${s.text}`, severity: 3, status: 'open', action: '' });
+      existing.add(topic.trim().toLowerCase());
+      added++;
+    }
+    setKbAdded(added);
+    setKbSuggestions([]);
   };
 
   // Toolbar of export actions, shared by the result pane and history rows.
@@ -470,6 +509,42 @@ export function ResumeBuilder({
                   </p>
                 </div>
               </div>
+            )}
+
+            {/* Knowledge-Bank suggestions: gaps (Honesty Notes) + strengths (Inventory) */}
+            {kbSuggestions.length > 0 && (
+              <div className="glass-panel p-5 rounded-2xl border border-amber-900/40 space-y-3">
+                <h3 className="text-xs font-extrabold text-slate-100 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-amber-400" /> Add to Knowledge Bank
+                </h3>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Gaps to close and strengths to lean on, surfaced for this job. Pick the ones worth tracking before the interview.
+                </p>
+                <div className="space-y-1.5 max-h-56 overflow-auto pr-1">
+                  {kbSuggestions.map((s, i) => (
+                    <label key={i} className="flex items-start gap-2 text-[11px] text-slate-300 leading-relaxed cursor-pointer">
+                      <input type="checkbox" checked={selectedKb.has(s.text)} onChange={() => toggleKb(s.text)} className="mt-0.5 accent-amber-500 shrink-0" />
+                      <span className={`mt-px shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${s.kind === 'gap' ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>{s.kind}</span>
+                      <span>{s.text}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={addToKb}
+                    disabled={selectedKb.size === 0}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg text-[11px] font-bold transition"
+                  >
+                    Add {selectedKb.size} to Knowledge Bank
+                  </button>
+                  <button onClick={() => setKbSuggestions([])} className="px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-200 transition">Dismiss</button>
+                </div>
+              </div>
+            )}
+            {kbAdded > 0 && (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Added {kbAdded} to your Knowledge Bank.
+              </p>
             )}
           </div>
         </div>

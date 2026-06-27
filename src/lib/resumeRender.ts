@@ -20,6 +20,36 @@ export function splitTailored(md: string): { resumeMd: string; extrasMd: string 
   };
 }
 
+// Pull candidate gap bullets from the tailor's "Honesty & Verification Notes"
+// section (JD requirements not met / gaps the candidate isn't claiming / claims
+// to verify) — used to suggest Knowledge-Bank entries after generating.
+export function extractHonestyGaps(tailoredMd: string): string[] {
+  return sectionBullets(tailoredMd, /^#{1,6}\s*Honesty/i);
+}
+
+// Bullets under a given "## <Section>" heading in the tailor output.
+function sectionBullets(md: string, heading: RegExp): string[] {
+  const lines = md.split('\n');
+  const start = lines.findIndex((l) => heading.test(l));
+  if (start === -1) return [];
+  const out: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^#{1,6}\s/.test(lines[i])) break; // next top section ends the list
+    const m = lines[i].match(/^\s*[-*]\s+(.*)$/);
+    if (m) {
+      const t = m[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+      if (t.length > 3) out.push(t);
+    }
+  }
+  return out.slice(0, 12);
+}
+
+// "Tailoring Inventory" bullets — what the resume led with / emphasized for this
+// role = the candidate's defensible strengths (used to suggest Knowledge-Bank entries).
+export function extractInventoryStrengths(tailoredMd: string): string[] {
+  return sectionBullets(tailoredMd, /^#{1,6}\s*Tailoring Inventory/i);
+}
+
 // Parse the constrained resume Markdown into blocks. Horizontal rules and blank
 // lines are dropped (they carry no resume content).
 export function parseBlocks(md: string): Block[] {

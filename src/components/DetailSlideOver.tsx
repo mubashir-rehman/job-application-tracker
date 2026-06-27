@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { JobApplication, InterviewPhase } from '../types';
+import { useKnowledgeBank } from '../hooks/useKnowledgeBank';
+import { EntryKind } from '../lib/knowledgeBankService';
 import { deriveCurrentStatus } from '../lib/appUtils';
 import { statusTone, WORK_MODELS, APPLIED_VIA } from '../lib/statusStyles';
 import { Field, OptionSelect, fieldInput } from './common/Field';
@@ -21,6 +24,8 @@ interface DetailSlideOverProps {
   onUpdateApplication: (app: JobApplication) => void;
   /** Render inline as a shell column (desktop) instead of an overlay sheet (mobile/narrow). */
   asPane?: boolean;
+  /** Signed-in user (for syncing Knowledge-Bank entries sent from the retro). */
+  user?: SupabaseUser | null;
   /** Tailored-resume history (lifted in App); the section shows entries for this job. */
   tailored?: TailoredResume[];
   onRemoveTailored?: (id: string) => void;
@@ -59,11 +64,13 @@ function Section({ icon: Icon, title, hint, open, onToggle, children }: {
   );
 }
 
-export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false, tailored = [], onRemoveTailored }: DetailSlideOverProps) {
+export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplication, asPane = false, user = null, tailored = [], onRemoveTailored }: DetailSlideOverProps) {
   const [editedApp, setEditedApp] = useState<JobApplication | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({});
   const [openSections, setOpenSections] = useState({ details: false, contacts: false, retro: false, resumes: false });
+  const { entries: kbEntries, addEntry: addKbEntry } = useKnowledgeBank(user);
+  const [kbAdded, setKbAdded] = useState<Set<string>>(new Set()); // topics added this session (button feedback)
 
   useEffect(() => {
     if (application) {
@@ -145,6 +152,39 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
   const toggleSection = (id: keyof typeof openSections) =>
     setOpenSections(p => ({ ...p, [id]: !p[id] }));
+
+  // Send a retro signal (an interview pro/con or a skill gap) to the Knowledge Bank,
+  // tagged with this job and deduped against existing entries by topic.
+  const kbTopic = (text: string) => { const t = text.trim(); return t.length > 80 ? t.slice(0, 77).trimEnd() + '…' : t; };
+  const kbHas = (text: string) => {
+    const key = kbTopic(text).toLowerCase();
+    return kbAdded.has(key) || kbEntries.some(e => e.topic.trim().toLowerCase() === key);
+  };
+  const sendToKb = (text: string, kind: EntryKind, category: string) => {
+    const t = text.trim();
+    if (!t) return;
+    const topic = kbTopic(t);
+    const key = topic.toLowerCase();
+    setKbAdded(prev => new Set(prev).add(key));
+    if (kbEntries.some(e => e.topic.trim().toLowerCase() === key)) return; // already present
+    addKbEntry({ category, kind, topic, detail: `From ${editedApp!.companyName} — ${editedApp!.targetRole}. ${t}`, severity: 3, status: 'open', action: '' });
+  };
+  // Inline "+ KB" / "✓ KB" affordance, only shown when the field has content.
+  const KbButton = ({ text, kind, category }: { text: string; kind: EntryKind; category: string }) => {
+    if (!text.trim()) return null;
+    const done = kbHas(text);
+    return (
+      <button
+        type="button"
+        onClick={() => sendToKb(text, kind, category)}
+        disabled={done}
+        title="Add to Knowledge Bank"
+        className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded transition shrink-0 ${done ? 'text-emerald-400' : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'}`}
+      >
+        {done ? '✓ KB' : '+ KB'}
+      </button>
+    );
+  };
 
   // Tailored resumes saved for this job + inline export (resume part only).
   const jobResumes = tailored.filter(t => t.jobId === editedApp.id);
@@ -320,11 +360,17 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
 
                       <div className="grid grid-cols-2 gap-2.5">
                         <label className="block space-y-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> Good</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <ThumbsUp className="w-3 h-3" /> Good
+                            <span className="ml-auto"><KbButton text={phase.pros} kind="strength" category="Behavioral / STAR" /></span>
+                          </span>
                           <textarea rows={2} value={phase.pros} onChange={e => handlePhaseChange(i, 'pros', e.target.value)} placeholder="What went well" className={`${fieldInput} resize-none leading-relaxed`} />
                         </label>
                         <label className="block space-y-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1"><ThumbsDown className="w-3 h-3" /> Risk</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                            <ThumbsDown className="w-3 h-3" /> Risk
+                            <span className="ml-auto"><KbButton text={phase.cons} kind="gap" category="Behavioral / STAR" /></span>
+                          </span>
                           <textarea rows={2} value={phase.cons} onChange={e => handlePhaseChange(i, 'cons', e.target.value)} placeholder="Concerns / gaps" className={`${fieldInput} resize-none leading-relaxed`} />
                         </label>
                       </div>
@@ -396,6 +442,9 @@ export function DetailSlideOver({ application, isOpen, onClose, onUpdateApplicat
             <Section icon={Award} title="Retro & Learnings" open={openSections.retro} onToggle={() => toggleSection('retro')}>
               <Field label="Skill gaps to close">
                 <textarea rows={2} value={editedApp.postMortem.skillsImprovements} onChange={e => handlePostMortemChange('skillsImprovements', e.target.value)} placeholder="What to study / practice before the next round" className={`${fieldInput} resize-none leading-relaxed`} />
+                {editedApp.postMortem.skillsImprovements.trim() && (
+                  <div className="flex justify-end mt-1"><KbButton text={editedApp.postMortem.skillsImprovements} kind="improvement" category="Tool Depth" /></div>
+                )}
               </Field>
               <Field label="Prep notes">
                 <textarea rows={2} value={editedApp.postMortem.preparationNotes} onChange={e => handlePostMortemChange('preparationNotes', e.target.value)} placeholder="How to prepare next time" className={`${fieldInput} resize-none leading-relaxed`} />

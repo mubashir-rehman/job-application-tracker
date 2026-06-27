@@ -203,6 +203,7 @@ export default function App() {
             application={selectedApplication}
             isOpen
             asPane
+            user={user}
             onClose={() => setSelectedApplication(null)}
             onUpdateApplication={handleUpdateApplication}
             tailored={tailoredItems}
@@ -261,6 +262,7 @@ export default function App() {
       <DetailSlideOver
         application={selectedApplication}
         isOpen={selectedApplication !== null && !isWide}
+        user={user}
         onClose={() => setSelectedApplication(null)}
         onUpdateApplication={handleUpdateApplication}
         tailored={tailoredItems}
