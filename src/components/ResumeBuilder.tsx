@@ -82,11 +82,14 @@ export function ResumeBuilder({
   };
 
   // Pick a job to tailor for → prefill its stored JD (editable fallback remains).
+  // Prefer the raw JD; fall back to the saved requirements digest, since many apps
+  // store the description in keyJdRequirements rather than jdText.
   const onPickJob = (id: string) => {
     setSelectedJobId(id);
     if (id) {
       const a = applications.find(x => x.id === id);
-      if (a?.jdText) setJdText(a.jdText);
+      const jd = a?.jdText?.trim() || a?.keyJdRequirements?.trim();
+      if (jd) setJdText(jd);
     }
   };
 
