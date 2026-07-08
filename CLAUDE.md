@@ -37,7 +37,7 @@ Framework-agnostic handlers run in two places from one source:
 - **Local**: `server/dev-api.ts` (Express) mounts each handler at `/api/*` on port 3001; Vite proxies `/api` → 3001 (`npm run dev:all`).
 - **Production**: the same files under `api/**` deploy as Vercel serverless functions (filename = route).
 
-Handlers are typed against the minimal `ApiReq`/`ApiRes` in `lib/server/types.ts` (satisfied by both Express and Vercel). Shared server code lives in `lib/server/` (kept out of `api/` so Vercel doesn't route it): `llm.ts` (BYOK provider client via `fetch` — Anthropic/OpenAI/Gemini, no SDKs), `http.ts` (header/method helpers). **BYOK keys arrive in the `X-API-Key` header per request and are never stored or logged.** Endpoints: `GET /api/health`, `POST /api/resume/tailor`.
+Handlers are typed against the minimal `ApiReq`/`ApiRes` in `lib/server/types.ts` (satisfied by both Express and Vercel). Shared server code lives in `lib/server/` (kept out of `api/` so Vercel doesn't route it): `llm.ts` (BYOK provider client via `fetch` — Anthropic/OpenAI/Gemini, no SDKs), `http.ts` (header/method helpers), `fetchText.ts` + `jdExtract.ts` + `search.ts` (JD URL fetch/parse helpers), and `pipelines/` (LangGraph flows: `jdParse.ts`, `score.ts`). **BYOK keys arrive in the `X-API-Key` header per request and are never stored or logged.** Endpoints: `GET /api/health`, `POST /api/resume/tailor`, `POST /api/resume/import`, `POST /api/jd/parse`, `POST /api/jd/score`. Resume/JD work uses `@langchain/langgraph`, `docx`, `mammoth`, `pdfjs-dist`, and `turndown`.
 
 ### State & data flow
 
@@ -80,6 +80,10 @@ Three custom hooks own all state — `App.tsx` is UI-only:
 - `currentStatus` is always derived via `deriveCurrentStatus(phases)` — never set to an arbitrary string.
 - BYOK API keys live in `localStorage` (`hiretrack_api_keys`) and travel only in `X-API-Key` request headers. They must never be stored in Supabase or logged.
 - No company-specific logic anywhere in business logic (no `if company === '...'` guards).
+
+### `mcp-server/` — separate sub-package (do not mix with the Vite app)
+
+`mcp-server/` is an **isolated Next.js 15 package** (its own `package.json`, `node_modules`, and Vercel project) exposing a remote MCP server (Streamable HTTP via `mcp-handler`) that lets Claude read/write `job_applications`. It has **no build coupling** to the Vite PWA — run its commands from inside `mcp-server/` (`npm run dev` on port 3002, `npm run lint` = `tsc --noEmit`). Auth is OAuth 2.1 delegated to the Supabase project's native OAuth server; every request runs on the user's own token so RLS scopes all access. Never uses `service_role`. Tools: `list_applications`, `get_application`, `check_duplicate`, `add_application`, `update_status`. See `mcp-server/README.md`. Note the schema mapping quirks it documents: no `applied_at` (uses `createdAt`), `notes` is stored in `keyJdRequirements`.
 
 ### Dead code / disabled features
 
