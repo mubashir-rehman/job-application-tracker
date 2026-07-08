@@ -28,6 +28,7 @@ export interface TailorParams {
   masterMd: string;
   jdText: string;
   lane?: string;
+  instructions?: string; // user's custom tailoring system prompt (optional)
   model?: string;
   baseUrl?: string;
 }
@@ -36,7 +37,7 @@ export interface TailorParams {
 export async function tailorResume(p: TailorParams): Promise<string> {
   const { tailoredMd } = await postJson<{ tailoredMd: string }>(
     '/api/resume/tailor',
-    { masterMd: p.masterMd, jdText: p.jdText, lane: p.lane },
+    { masterMd: p.masterMd, jdText: p.jdText, lane: p.lane, instructions: p.instructions },
     byokHeaders(p),
   );
   return tailoredMd;

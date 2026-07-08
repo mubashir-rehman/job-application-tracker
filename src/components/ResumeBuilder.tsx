@@ -5,12 +5,14 @@ import {
   Sparkles, Key, FileText, CheckCircle2,
   AlertCircle, Wand2, Clock,
   Copy, Download, Check, FileUp, Server, ShieldCheck, Printer,
-  Briefcase, Trash2, Eye, BookOpen, Gauge, X,
+  Briefcase, Trash2, Eye, BookOpen, Gauge, X, ChevronDown, RotateCcw,
 } from 'lucide-react';
 import { JobApplication } from '../types';
 import { Provider, PROVIDERS } from '../lib/apiKeys';
 import { useApiKeys } from '../hooks/useApiKeys';
 import { useMasterResume } from '../hooks/useMasterResume';
+import { useInstructions } from '../hooks/useInstructions';
+import { DEFAULT_INSTRUCTIONS } from '../lib/defaultInstructions';
 import { useKnowledgeBank } from '../hooks/useKnowledgeBank';
 import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
@@ -36,6 +38,8 @@ export function ResumeBuilder({
 }) {
   const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
+  const { instructions, setInstructions, status: instrStatus, isDefault: instrIsDefault } = useInstructions(user);
+  const [showInstructions, setShowInstructions] = useState(false);
   const { entries: kbEntries, addEntry: addKbEntry } = useKnowledgeBank(user);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
   const [customCfg] = useState<CustomEndpoint>(loadCustomEndpoint);
@@ -151,7 +155,7 @@ export function ResumeBuilder({
     setError(null);
     setResult('');
     try {
-      const md = await tailorResume({ ...callConfig(), masterMd, jdText });
+      const md = await tailorResume({ ...callConfig(), masterMd, jdText, instructions });
       setResult(md);
       // Run the ATS check on the resume body only (coaching sections stripped).
       setAtsReport(runAtsCheck(splitTailored(md).resumeMd, jdText));
@@ -388,6 +392,58 @@ export function ResumeBuilder({
                 className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-xs leading-relaxed text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition resize-y font-mono"
               />
               <p className="text-[10px] text-slate-500">{user ? 'Auto-saved to your cloud master_resume; mirrored locally.' : 'Stored in your browser. Sign in to sync to the cloud master CV.'}</p>
+            </div>
+
+            {/* Tailoring Instructions — the system prompt used to generate resumes (collapsible) */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+              <button
+                onClick={() => setShowInstructions(v => !v)}
+                className="w-full flex items-center justify-between"
+                aria-expanded={showInstructions}
+              >
+                <h3 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                  <Wand2 className="w-4 h-4 text-indigo-400" />
+                  Tailoring Instructions
+                  <span className="text-[10px] font-bold text-slate-500">{instrIsDefault ? 'default' : 'customized'}</span>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-600 font-mono">
+                    {instrStatus === 'saving' ? 'saving…'
+                      : instrStatus === 'synced' ? 'synced to cloud'
+                      : instrStatus === 'loading' ? 'loading…'
+                      : instrStatus === 'error' ? 'saved locally (cloud failed)'
+                      : 'saved locally'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showInstructions ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+
+              <p className="text-[10px] text-slate-500">
+                The system prompt that guides how resumes are tailored. Ships with a general-purpose default — customize it with your own strategy, positioning, and honesty rules. The output structure is fixed by the app, so focus on approach, not format.
+              </p>
+
+              {showInstructions && (
+                <>
+                  <textarea
+                    value={instructions}
+                    onChange={e => setInstructions(e.target.value)}
+                    rows={10}
+                    placeholder="Paste your tailoring system prompt (strategy, positioning, honesty rules, candidate facts)…"
+                    className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 text-xs leading-relaxed text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition resize-y font-mono"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] text-slate-500">{user ? 'Auto-saved to your account; mirrored locally.' : 'Stored in your browser. Sign in to sync to your account.'}</p>
+                    {!instrIsDefault && (
+                      <button
+                        onClick={() => setInstructions(DEFAULT_INSTRUCTIONS)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 transition shrink-0"
+                      >
+                        <RotateCcw className="w-3 h-3" /> Reset to default
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Job + description */}

@@ -64,10 +64,20 @@ const handler: Handler = async (req, res) => {
   const apiKey = getApiKey(req);
   if (!apiKey) return fail(res, 400, 'Missing X-API-Key header (BYOK)');
 
-  const { masterMd, jdText, lane } = req.body || {};
+  const { masterMd, jdText, lane, instructions } = req.body || {};
   if (!masterMd || !jdText) return fail(res, 400, 'masterMd and jdText are required');
 
   const provider = getProvider(req);
+
+  // Optional user-provided instructions (their own tailoring system prompt).
+  // They layer on top of the built-in SYSTEM for strategy/positioning/voice, but
+  // the built-in OUTPUT contract stays authoritative so downstream parsing (the
+  // Tailoring Inventory + Honesty Notes sections) keeps working.
+  const custom = typeof instructions === 'string' ? instructions.trim() : '';
+  const system = custom
+    ? `${SYSTEM}\n\n--- ADDITIONAL USER INSTRUCTIONS ---\nApply the following user-provided instructions for strategy, positioning, candidate facts, voice, and honesty framing. If any of them conflict with the OUTPUT section specified above, the OUTPUT section above WINS — always return the three-part Markdown (resume, "## Tailoring Inventory", "## Honesty & Verification Notes").\n\n${custom}`
+    : SYSTEM;
+
   const prompt = [
     `TARGET LANE: ${lane || '(infer the single best-fitting lane from the JD)'}`,
     `\n--- MASTER CV ---\n${masterMd}`,
@@ -79,7 +89,7 @@ const handler: Handler = async (req, res) => {
     // Reasoning ON — tailoring is a hard judgement task (positioning, defensibility,
     // exact-keyword mapping). Generous budget so reasoning + resume + the two
     // appended sections all fit (reasoning models would otherwise truncate).
-    const tailoredMd = await callLLM({ provider, apiKey, system: SYSTEM, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 8192, thinking: true });
+    const tailoredMd = await callLLM({ provider, apiKey, system, prompt, model: getModel(req), baseUrl: getBaseUrl(req), maxTokens: 8192, thinking: true });
     res.status(200).json({ tailoredMd, provider });
   } catch (e) {
     const err = e as LLMError;
