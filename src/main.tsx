@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.tsx';
+import OAuthConsent from './pages/OAuthConsent.tsx';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/oauth/consent" element={<OAuthConsent />} />
         </Routes>
       </BrowserRouter>
     </MotionConfig>
