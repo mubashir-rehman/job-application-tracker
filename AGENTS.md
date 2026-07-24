@@ -226,3 +226,9 @@ See `task.md` for the full task list with completion status.
 - `GDriveResumeUploader.tsx` — Google Drive OAuth disabled pending app review (commit `0172c44`)
 - `src/lib/googleDriveService.ts` — same reason
 - `.claude/skills/` — old documentation files from previous session, superseded by `.claude/commands/`
+
+---
+
+## Future Work
+
+- Candidate ideas (OSS reuse, feature backlog, open discovery questions) migrated from the archived ApplyFlow project: `docs/research/applyflow-research.md`. Not commitments — future-work reference only.

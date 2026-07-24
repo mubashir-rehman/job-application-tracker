@@ -8,11 +8,12 @@ export const maxDuration = 60;
 
 // POST /api/jd/score
 // headers (optional — no key ⇒ keyword coverage only): X-API-Key, X-Provider, X-Model, X-Base-URL
-// body: { masterMd: string, jdText: string }
+// body: { masterMd: string, jdText: string, research?: JdResearch } — `research` is the
+// brief already returned by /api/jd/parse's `enrich`, forwarded as background context.
 const handler: Handler = async (req, res) => {
   if (!requireMethod(req, res, 'POST')) return;
 
-  const { masterMd, jdText } = req.body || {};
+  const { masterMd, jdText, research } = req.body || {};
   if (!masterMd || typeof masterMd !== 'string') return fail(res, 400, 'masterMd is required');
   if (!jdText || typeof jdText !== 'string') return fail(res, 400, 'jdText is required');
 
@@ -24,6 +25,7 @@ const handler: Handler = async (req, res) => {
       provider: getProvider(req),
       model: getModel(req),
       baseUrl: getBaseUrl(req),
+      research: research || null,
     });
     res.status(200).json(result);
   } catch (e) {

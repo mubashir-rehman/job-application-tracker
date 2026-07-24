@@ -1,6 +1,7 @@
 import { Handler } from '../../lib/server/types.js';
 import { callLLM, LLMError } from '../../lib/server/llm.js';
 import { requireMethod, getApiKey, getProvider, getModel, getBaseUrl, fail } from '../../lib/server/http.js';
+import { formatResearchContext } from '../../lib/server/pipelines/jdParse.js';
 
 // Vercel: reasoning-enabled tailoring can take longer than a plain completion.
 export const maxDuration = 60;
@@ -57,14 +58,16 @@ Return ONLY this Markdown — no preamble.`;
 
 // POST /api/resume/tailor
 // headers: X-API-Key (required), X-Provider (anthropic|openai|gemini), X-Model?
-// body: { masterMd: string, jdText: string, lane?: string }
+// body: { masterMd: string, jdText: string, lane?: string, research?: JdResearch } —
+// `research` is the brief already returned by /api/jd/parse's `enrich`, forwarded as
+// background context only (never a claimable fact — truth stays master-CV-only).
 const handler: Handler = async (req, res) => {
   if (!requireMethod(req, res, 'POST')) return;
 
   const apiKey = getApiKey(req);
   if (!apiKey) return fail(res, 400, 'Missing X-API-Key header (BYOK)');
 
-  const { masterMd, jdText, lane, instructions } = req.body || {};
+  const { masterMd, jdText, lane, instructions, research } = req.body || {};
   if (!masterMd || !jdText) return fail(res, 400, 'masterMd and jdText are required');
 
   const provider = getProvider(req);
@@ -82,8 +85,9 @@ const handler: Handler = async (req, res) => {
     `TARGET LANE: ${lane || '(infer the single best-fitting lane from the JD)'}`,
     `\n--- MASTER CV ---\n${masterMd}`,
     `\n--- JOB DESCRIPTION ---\n${jdText}`,
+    formatResearchContext(research),
     `\nProduce the tailored resume Markdown now.`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   try {
     // Reasoning ON — tailoring is a hard judgement task (positioning, defensibility,

@@ -10,11 +10,12 @@ export const maxDuration = 60;
 
 // POST /api/jd/parse
 // headers (all optional — no key ⇒ deterministic-only): X-API-Key, X-Provider, X-Model, X-Base-URL
-// body: { jdText?: string, jdUrl?: string }
+// body: { jdText?: string, jdUrl?: string, enrich?: boolean, masterMd?: string } — `masterMd`
+// is optional and used ONLY to derive research.experienceMatch during enrich; never for extraction.
 const handler: Handler = async (req, res) => {
   if (!requireMethod(req, res, 'POST')) return;
 
-  const { jdText, jdUrl, enrich } = req.body || {};
+  const { jdText, jdUrl, enrich, masterMd, researchPromptOverride } = req.body || {};
   if ((!jdText || typeof jdText !== 'string') && (!jdUrl || typeof jdUrl !== 'string')) {
     return fail(res, 400, 'Provide jdText or jdUrl');
   }
@@ -29,6 +30,8 @@ const handler: Handler = async (req, res) => {
       baseUrl: getBaseUrl(req),
       enrich: enrich === true,
       searchKey: getSearchKey(req),
+      masterMd: typeof masterMd === 'string' ? masterMd : undefined,
+      researchPromptOverride: typeof researchPromptOverride === 'string' ? researchPromptOverride : undefined,
     });
     res.status(200).json(result);
   } catch (e) {

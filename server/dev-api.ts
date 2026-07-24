@@ -11,6 +11,8 @@ import { Handler } from '../lib/server/types';
 import health from '../api/health';
 import tailor from '../api/resume/tailor';
 import importResume from '../api/resume/import';
+import visualQa from '../api/resume/visual-qa';
+import profileExtract from '../api/resume/profile-extract';
 import jdParse from '../api/jd/parse';
 import jdScore from '../api/jd/score';
 
@@ -31,6 +33,8 @@ const mount = (h: Handler) => (req: Request, res: Response) => {
 app.all('/api/health', mount(health));
 app.all('/api/resume/tailor', mount(tailor));
 app.all('/api/resume/import', mount(importResume));
+app.all('/api/resume/visual-qa', mount(visualQa));
+app.all('/api/resume/profile-extract', mount(profileExtract));
 app.all('/api/jd/parse', mount(jdParse));
 app.all('/api/jd/score', mount(jdScore));
 
@@ -40,5 +44,8 @@ app.listen(port, () => {
   console.log('   GET  /api/health');
   console.log('   POST /api/resume/tailor');
   console.log('   POST /api/resume/import');
+  console.log('   POST /api/resume/visual-qa');
+  console.log('   POST /api/resume/profile-extract');
   console.log('   POST /api/jd/parse');
+  console.log('   POST /api/jd/score');
 });

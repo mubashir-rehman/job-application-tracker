@@ -1,8 +1,9 @@
 // Stage 3 — match & positioning score. Deterministic-first like the JD parse
 // pipeline: keyword coverage (master CV vs JD) is computed key-less; an LLM
 // positioning verdict (skip/stretch/apply) refines it only when a key is present.
-import { Provider, callLLM } from '../llm.js';
+import { Provider, callLLMStructured, JsonSchema } from '../llm.js';
 import { deterministicExtract } from '../jdExtract.js';
+import { JdResearch, formatResearchContext } from './jdParse.js';
 
 export type Recommendation = 'skip' | 'stretch' | 'apply';
 
@@ -24,6 +25,9 @@ export interface ScoreInput {
   provider?: Provider;
   model?: string;
   baseUrl?: string;
+  // Previously-computed research brief (from /api/jd/parse's `enrich`) — fed in as
+  // background context only, never a claimable fact (truth stays master-CV-only).
+  research?: JdResearch | null;
 }
 
 const SYSTEM = `You are a job-fit positioning analyst. Given a candidate MASTER CV and a JOB DESCRIPTION,
@@ -40,13 +44,18 @@ Return ONLY this JSON (no prose, no code fences):
 
 recommendation: "apply" = strong fit; "stretch" = partial fit worth a tailored shot; "skip" = poor fit / wasted effort.`;
 
-function safeJson(raw: string): Record<string, any> | null {
-  const stripped = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = stripped.indexOf('{');
-  const end = stripped.lastIndexOf('}');
-  if (start === -1 || end === -1) return null;
-  try { return JSON.parse(stripped.slice(start, end + 1)); } catch { return null; }
-}
+const SCORE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    score: { type: 'integer', minimum: 0, maximum: 100 },
+    recommendation: { type: 'string', enum: ['skip', 'stretch', 'apply'] },
+    strengths: { type: 'array', items: { type: 'string' } },
+    gaps: { type: 'array', items: { type: 'string' } },
+    rationale: { type: 'string' },
+  },
+  required: ['score', 'recommendation', 'strengths', 'gaps', 'rationale'],
+  additionalProperties: false,
+};
 
 // Deterministic keyword coverage: which JD tech tags appear in the master CV.
 function coverage(masterMd: string, jdText: string): { matched: string[]; missing: string[]; ratio: number } {
@@ -92,10 +101,11 @@ export async function runScore(input: ScoreInput): Promise<ScoreResult> {
     `Missing: ${missing.join(', ') || '(none)'}`,
     `\n--- MASTER CV ---\n${masterMd.slice(0, 8000)}`,
     `\n--- JOB DESCRIPTION ---\n${jdText.slice(0, 6000)}`,
+    formatResearchContext(input.research),
     `\nReturn the JSON verdict now.`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
-  const raw = await callLLM({
+  const { data: p } = await callLLMStructured({
     provider: input.provider || 'anthropic',
     apiKey: input.apiKey,
     system: SYSTEM,
@@ -105,9 +115,10 @@ export async function runScore(input: ScoreInput): Promise<ScoreResult> {
     // Generous budget: reasoning models (e.g. MiMo) spend tokens thinking before
     // the small JSON verdict; too low returns empty.
     maxTokens: 2000,
+    schema: SCORE_SCHEMA,
+    schemaName: 'positioning_verdict',
   });
 
-  const p = safeJson(raw);
   if (!p) {
     // LLM returned unparseable output — fall back to the deterministic verdict.
     return {

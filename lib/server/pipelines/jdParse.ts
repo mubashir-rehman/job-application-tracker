@@ -8,19 +8,30 @@
 // of JD phrasings); deterministic is the key-less path and the safety net if the
 // LLM call or its JSON parse fails.
 import { StateGraph, Annotation, START, END } from '@langchain/langgraph';
-import { Provider, callLLM, callLLMWithSearch, SearchUnsupportedError } from '../llm.js';
+import { Provider, callLLMStructured, JsonSchema, safeJsonParse } from '../llm.js';
+import { groundedCall } from '../agent.js';
 import { serperSearch } from '../search.js';
 import { fetchUrlText } from '../fetchText.js';
 import { deterministicExtract, JdFields } from '../jdExtract.js';
 
 // Web-search research brief (opt-in `enrich`). Not written into the truth-only
-// form fields — it's supporting context the user can act on.
+// form fields — it's supporting context the user can act on. Fed forward (as
+// non-claimable context, never resume facts) into /api/jd/score and
+// /api/resume/tailor by the client, which already holds the computed brief.
 export interface JdResearch {
   companyWebsite?: string;
   summary?: string;
   marketSalaryHint?: string;
+  productOverview?: string;    // 1-2 sentences: what the product/company concretely does
+  engCulture?: string;         // eng culture/practices signal, only if genuinely discoverable
+  stackSignals?: string[];     // tech signals beyond the JD's own techTags (job posts, eng blog, etc.)
+  recentNews?: string[];       // up to 3 short factual recent-news bullets
+  experienceMatch?: string;    // candidate's real (master-CV) experience matching what the company
+                                // actually does but NOT explicitly asked for in the JD — a suggestion
+                                // for the candidate to consider, never a resume claim on its own
   sources?: { title: string; url: string }[];
-  via?: 'serper' | 'gemini'; // which search backend produced it
+  via?: string;              // which search backend produced it ('serper', 'anthropic-native', 'agent-loop', …)
+  grounded?: boolean;        // false when the LLM answered without live web results
   unsupported?: boolean;      // no search key and no grounded provider
   error?: string;            // search failed (e.g. out of credits)
 }
@@ -68,6 +79,8 @@ const State = Annotation.Root({
   gaps: Annotation<string[]>({ reducer: (_a, b) => b, default: () => [] }),
   enrich: Annotation<boolean | undefined>(),
   searchKey: Annotation<string | undefined>(),
+  masterMd: Annotation<string | undefined>(),
+  researchPromptOverride: Annotation<string | undefined>(),
   research: Annotation<JdResearch | null>({ reducer: (_a, b) => b, default: () => null }),
 });
 type S = typeof State.State;
@@ -91,13 +104,25 @@ function routeAfterIngest(state: S): 'llm' | 'deterministic' {
   return state.apiKey ? 'llm' : 'deterministic';
 }
 
-function safeJson(raw: string): Record<string, any> | null {
-  const stripped = raw.replace(/```(?:json)?/gi, '').trim();
-  const start = stripped.indexOf('{');
-  const end = stripped.lastIndexOf('}');
-  if (start === -1 || end === -1) return null;
-  try { return JSON.parse(stripped.slice(start, end + 1)); } catch { return null; }
-}
+// Structured-output schema for the extraction — passed to `callLLMStructured` so
+// Anthropic/OpenAI/Gemini return this shape natively; `safeJsonParse` (from
+// llm.ts) is only the last-resort fallback inside that call.
+const JD_EXTRACT_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    companyName: { type: ['string', 'null'] },
+    targetRole: { type: ['string', 'null'] },
+    workModel: { type: ['string', 'null'], enum: ['Remote', 'Hybrid', 'Onsite', null] },
+    location: { type: ['string', 'null'] },
+    salaryRange: { type: ['string', 'null'] },
+    otherBenefits: { type: ['string', 'null'] },
+    hrContact: { type: ['string', 'null'] },
+    keyRequirements: { type: ['string', 'null'] },
+    techTags: { type: 'array', items: { type: 'string' } },
+  },
+  required: [...LLM_KEYS],
+  additionalProperties: false,
+};
 
 function usable(v: any): boolean {
   return v != null && v !== '' && !(Array.isArray(v) && v.length === 0);
@@ -106,7 +131,7 @@ function usable(v: any): boolean {
 async function llm(state: S): Promise<Partial<S>> {
   let parsed: Record<string, any> | null = null;
   try {
-    const raw = await callLLM({
+    const { data } = await callLLMStructured({
       provider: state.provider || 'anthropic',
       apiKey: state.apiKey!,
       system: LLM_SYSTEM,
@@ -116,8 +141,10 @@ async function llm(state: S): Promise<Partial<S>> {
       maxTokens: 2000, // small JSON; fast providers (Gemini thinkingBudget:0 / Anthropic / OpenAI)
                        // answer well within this. In-band reasoners (MiMo) may still exhaust it and
                        // fall back to deterministic below — acceptable graceful degradation.
+      schema: JD_EXTRACT_SCHEMA,
+      schemaName: 'jd_fields',
     });
-    parsed = safeJson(raw);
+    parsed = data;
   } catch {
     parsed = null;
   }
@@ -152,13 +179,20 @@ function finalize(state: S): Partial<S> {
 }
 
 // Opt-in company research. Prefers serper.dev (a dedicated search API — no LLM
-// tokens, just search credits); falls back to Gemini grounding. Never writes the
-// truth-only form fields; sources are real URLs the user still verifies.
+// tokens, just search credits); otherwise routes the LLM key through the grounded
+// fallback ladder (native provider search → agent loop → ungrounded). Never writes
+// the truth-only form fields; sources are real URLs the user still verifies.
+// LLM-first: only an LLM can synthesize the narrative brief fields (product,
+// culture, stack signals, news, experience-match) from raw search results, so an
+// apiKey routes to the grounded path even when a searchKey is also present — the
+// grounded fallback ladder still uses that searchKey internally (as the agent
+// loop's `web_search` tool) when the provider has no native search. The serper-only
+// path remains the keyless-of-LLM fallback: cheap, no tokens, but basic fields only.
 async function enrichNode(state: S): Promise<Partial<S>> {
   const company = state.fields.companyName;
   if (!company) return {};
+  if (state.apiKey) return { research: await enrichViaGrounded(state, company) };
   if (state.searchKey) return { research: await enrichViaSerper(state, company) };
-  if (state.apiKey) return { research: await enrichViaGemini(state, company) };
   return { research: { unsupported: true } };
 }
 
@@ -210,37 +244,70 @@ async function enrichViaSerper(state: S, company: string): Promise<JdResearch> {
   }
 }
 
-async function enrichViaGemini(state: S, company: string): Promise<JdResearch> {
+// LLM-key path: run the grounded fallback ladder. Whatever backend answers, we get
+// {text, sources, grounded, via} and never a hard "unsupported" error. The prompt
+// asks for the full structured brief; JSON is parsed with `safeJsonParse` rather
+// than a provider structured-output mode — structured/tool-forced JSON modes don't
+// compose with the web-search tool turns the grounded ladder itself uses (Anthropic
+// server-side search + a forced tool in the same turn conflict; the OpenAI
+// Responses API used for native search is a different endpoint than the
+// `response_format: json_schema` Chat Completions path) — so plain JSON-in-prompt +
+// `safeJsonParse` is the deliberate, documented approach here, not an oversight.
+async function enrichViaGrounded(state: S, company: string): Promise<JdResearch> {
+  const masterMd = state.masterMd?.trim();
+  const override = state.researchPromptOverride?.trim();
   const prompt = [
     `Research the company "${company}"${state.fields.targetRole ? ` (hiring a ${state.fields.targetRole})` : ''} using web search.`,
-    `Return ONLY a JSON object: {"companyWebsite": string|null, "summary": string|null, "marketSalaryHint": string|null}`,
+    // A user-provided prompt override (Track 4 Prompt Manager) layers ON TOP for
+    // emphasis/focus/style — the JSON key contract below stays authoritative so
+    // downstream parsing (safeJsonParse expecting this exact shape) keeps working,
+    // the same pattern api/resume/tailor.ts uses for tailoring instructions.
+    override ? `\n--- ADDITIONAL USER RESEARCH FOCUS ---\n${override}\n` : '',
+    `Return ONLY a JSON object with exactly these keys:`,
+    `{"companyWebsite": string|null, "summary": string|null, "marketSalaryHint": string|null,`,
+    ` "productOverview": string|null, "engCulture": string|null, "stackSignals": string[], "recentNews": string[], "experienceMatch": string|null}`,
     `- companyWebsite: the official website URL.`,
     `- summary: one factual sentence on what the company does.`,
     state.fields.salaryRange
       ? `- marketSalaryHint: null (a salary was already posted).`
       : `- marketSalaryHint: a typical market pay range for this role/level with the source, e.g. "$120k–$150k (Levels.fyi)". Only if you find real data; else null.`,
-    `Use only information you can find via search. Do not fabricate. Output the JSON only.`,
-  ].join('\n');
+    `- productOverview: 1-2 sentences on what the product/company concretely builds or does. null if unclear.`,
+    `- engCulture: one sentence on engineering culture/practices ONLY if genuinely discoverable (eng blog, reviews); else null. Do not guess.`,
+    `- stackSignals: concrete technologies/tools this company is known to use, from real signals (job posts, engineering blog, etc.) beyond what's already in the JD. Empty array if none found.`,
+    `- recentNews: up to 3 short factual recent-news bullets (funding, launches, notable events). Empty array if none found.`,
+    masterMd
+      ? `- experienceMatch: using the MASTER CV EXCERPT below ONLY, 1-2 sentences on what specific real experience matches what this company actually does that the JD text itself doesn't explicitly ask for. This is a suggestion for the candidate to consider, NOT a resume claim — never invent experience. null if no genuine match.`
+      : `- experienceMatch: null (no candidate CV was provided).`,
+    `Use only information you can find via search; never fabricate. Output the JSON only, no prose, no code fences.`,
+    masterMd ? `\n--- MASTER CV EXCERPT (for experienceMatch only — do not use for any other field) ---\n${masterMd.slice(0, 3000)}` : '',
+  ].filter(Boolean).join('\n');
 
   try {
-    const { text, sources } = await callLLMWithSearch({
+    const { text, sources, grounded, via } = await groundedCall({
       provider: state.provider || 'gemini',
       apiKey: state.apiKey!,
       prompt,
       model: state.model,
-      maxTokens: 700,
+      baseUrl: state.baseUrl,
+      maxTokens: 900,
+      serperKey: state.searchKey, // used by the agent-loop's web_search tool when the provider has no native search
     });
-    const parsed = safeJson(text) || {};
+    const parsed = safeJsonParse(text) || {};
     return {
-      via: 'gemini',
+      via,
+      grounded,
       companyWebsite: parsed.companyWebsite || undefined,
       summary: parsed.summary || undefined,
       marketSalaryHint: parsed.marketSalaryHint || undefined,
+      productOverview: parsed.productOverview || undefined,
+      engCulture: parsed.engCulture || undefined,
+      stackSignals: Array.isArray(parsed.stackSignals) ? parsed.stackSignals.slice(0, 8).map(String) : undefined,
+      recentNews: Array.isArray(parsed.recentNews) ? parsed.recentNews.slice(0, 3).map(String) : undefined,
+      experienceMatch: parsed.experienceMatch || undefined,
       sources: sources.slice(0, 5),
     };
   } catch (e) {
-    if (e instanceof SearchUnsupportedError) return { unsupported: true };
-    return { via: 'gemini', error: (e as Error).message };
+    return { error: (e as Error).message };
   }
 }
 
@@ -272,6 +339,8 @@ export interface JdParseInput {
   baseUrl?: string;
   enrich?: boolean; // opt-in web-search research on the company
   searchKey?: string; // serper.dev key — preferred search backend when present
+  masterMd?: string; // optional master CV — used ONLY to derive research.experienceMatch
+  researchPromptOverride?: string; // Track 4 Prompt Manager override, layered on top of the built-in JSON contract
 }
 
 export interface JdParseResult {
@@ -285,4 +354,24 @@ export interface JdParseResult {
 export async function runJdParse(input: JdParseInput): Promise<JdParseResult> {
   const out = await graph.invoke(input);
   return { fields: out.fields, gaps: out.gaps, usedLLM: !!out.usedLLM, fetched: !!out.fetched, research: out.research };
+}
+
+// Render a previously-computed research brief as prompt context for
+// /api/jd/score and /api/resume/tailor. Always clearly labeled as background,
+// never a claimable fact — truth stays master-CV-only. Shared here so both
+// call sites format it identically.
+export function formatResearchContext(research?: JdResearch | null): string {
+  if (!research) return '';
+  const lines: string[] = [];
+  if (research.summary) lines.push(`Company summary: ${research.summary}`);
+  if (research.productOverview) lines.push(`Product: ${research.productOverview}`);
+  if (research.engCulture) lines.push(`Engineering culture: ${research.engCulture}`);
+  if (research.stackSignals?.length) lines.push(`Observed stack signals (beyond the JD's own list): ${research.stackSignals.join(', ')}`);
+  if (research.recentNews?.length) lines.push(`Recent news: ${research.recentNews.join('; ')}`);
+  if (research.experienceMatch) lines.push(`Possible experience overlap to consider — verify before claiming: ${research.experienceMatch}`);
+  if (!lines.length) return '';
+  return [
+    '\n--- SUPPORTING RESEARCH CONTEXT (background only — NEVER a claimable fact; truth remains master-CV-only) ---',
+    ...lines,
+  ].join('\n');
 }

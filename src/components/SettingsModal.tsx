@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { CheckCircle2, Settings, User, Key } from 'lucide-react';
+import { CheckCircle2, Settings, User, Key, Globe } from 'lucide-react';
 import { Modal, ModalHeader } from './common/Modal';
+import { isResearchNudgeEnabled, setResearchNudgeEnabled } from '../lib/settings';
 
 export { hasAnyApiKey } from '../lib/apiKeys';
 
@@ -14,6 +15,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     () => localStorage.getItem('hiretrack_profile_resume_url') || ''
   );
   const [resumeInput, setResumeInput] = useState('');
+  const [researchNudge, setResearchNudge] = useState(isResearchNudgeEnabled);
+
+  const toggleResearchNudge = () => {
+    const next = !researchNudge;
+    setResearchNudge(next);
+    setResearchNudgeEnabled(next);
+  };
 
   const saveProfileResume = () => {
     const url = resumeInput.trim();
@@ -86,6 +94,31 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Company research nudge */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Company Research</h4>
+            </div>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={researchNudge}
+                onClick={toggleResearchNudge}
+                className={`relative shrink-0 w-9 h-5 rounded-full transition mt-0.5 ${researchNudge ? 'bg-indigo-600' : 'bg-slate-700'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${researchNudge ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+              </button>
+              <span className="text-[10px] text-slate-500 leading-relaxed">
+                Nudge me to research the company when a JD doesn't specify a tech stack. "Research
+                company" stays available in either case — this only controls the hint.
+              </span>
+            </label>
           </div>
         </div>
       </div>

@@ -1,19 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { JobApplication, WorkModelType, AppliedViaType, PriorityLevel, InterviewPhase } from '../types';
 import { createDefaultPhases } from '../data';
 import { deriveCurrentStatus, extractTechTags } from '../lib/appUtils';
 import { WORK_MODELS, APPLIED_VIA } from '../lib/statusStyles';
 import { Field, Segmented, OptionSelect, fieldInput } from './common/Field';
 import { Modal, ModalHeader } from './common/Modal';
-import { Check, ChevronDown, Calendar, Sparkles, AlertCircle, Globe, Target } from 'lucide-react';
+import { Check, ChevronDown, Calendar, Sparkles, AlertCircle, Globe, Target, ShieldAlert } from 'lucide-react';
 import { parseJd, ParsedJdFields, JdResearch, scoreMatch, ScoreResult } from '../lib/apiClient';
 import { resolveProviderConfig } from '../lib/providerConfig';
 import { loadSearchKey } from '../lib/searchConfig';
+import { loadCachedResearch, saveResearchCache } from '../lib/researchCache';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { runTriage } from '../lib/triage';
+import { isResearchNudgeEnabled } from '../lib/settings';
 
 interface NewApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddApplication: (app: JobApplication) => void;
+  user?: SupabaseUser | null;
 }
 
 type IntakeStatus = 'saved' | 'applied' | 'interviewing';
@@ -36,7 +42,7 @@ function buildPhases(intake: IntakeStatus, appliedDate: string): { phases: Inter
   return { phases, currentStatus: deriveCurrentStatus(phases) };
 }
 
-export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewApplicationModalProps) {
+export function NewApplicationModal({ isOpen, onClose, onAddApplication, user = null }: NewApplicationModalProps) {
   const today = new Date().toISOString().slice(0, 10);
 
   const [jdInput, setJdInput] = useState('');       // primary: a link or pasted JD
@@ -58,6 +64,31 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
   const [priority, setPriority] = useState<PriorityLevel | ''>('');
 
   const [errors, setErrors] = useState<{ companyName?: string; targetRole?: string }>({});
+
+  // Track 4 — triage: screen the parsed JD against the User Profile hard rules
+  // BEFORE any research/tailor spend. Recomputes as fields fill in; a flagged
+  // JD requires an explicit "proceed anyway" before Research/Score run.
+  const { profile } = useUserProfile(user);
+  const [proceedAnyway, setProceedAnyway] = useState(false);
+  const triage = useMemo(
+    () => runTriage({
+      profile,
+      jd: { targetRole, workModel, location, salaryRange, keyRequirements: keyJdRequirements, jdText: jdInput },
+    }),
+    [profile, targetRole, workModel, location, salaryRange, keyJdRequirements, jdInput],
+  );
+  const triageBlocked = triage.verdict === 'flag' && !proceedAnyway;
+  const triageKey = triage.reasons.join('|');
+  useEffect(() => { setProceedAnyway(false); }, [triageKey]);
+
+  // Company research is opt-in; nudge toward it only when the JD itself gives
+  // no stack/tool signal (raw text AND the requirements field both empty) — a
+  // well-specified JD doesn't need the extra web-search spend for that purpose.
+  // Toggle in Settings.
+  const researchVague = useMemo(
+    () => jdInput.trim().length > 0 && !keyJdRequirements.trim() && extractTechTags(jdInput).length === 0,
+    [jdInput, keyJdRequirements],
+  );
 
   const [autofilling, setAutofilling] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
@@ -119,12 +150,21 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
     }
   };
 
-  // Opt-in company research. Prefers a serper.dev search key (no LLM tokens);
-  // falls back to a Gemini key (grounding). Sends a minimal labeled text so the
-  // pipeline goes straight to the enrich node (no extra gap-fill LLM call).
+  // Opt-in company research. An AI key routes through the grounded LLM path
+  // (needed to synthesize the full brief — product/culture/stack signals/news);
+  // a serper.dev-only key still gets the basic fields with no LLM tokens spent.
+  // Sends a minimal labeled text so the pipeline goes straight to the enrich
+  // node (no extra gap-fill LLM call). Cached per company for 24h
+  // (src/lib/researchCache.ts) so re-opening the same company doesn't re-spend.
   const handleResearch = async () => {
+    if (triageBlocked) return; // Track 4 triage gate — confirm "proceed anyway" first
     const company = companyName.trim();
     if (!company) return;
+    const cached = loadCachedResearch(company);
+    if (cached) {
+      setResearch(cached);
+      return;
+    }
     const searchKey = loadSearchKey();
     const geminiCfg = resolveProviderConfig('gemini');
     const hasGemini = geminiCfg?.provider === 'gemini';
@@ -145,7 +185,9 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
         searchKey: searchKey || undefined,
         ...(hasGemini ? geminiCfg : {}),
       });
-      setResearch(res.research || { unsupported: true });
+      const brief = res.research || { unsupported: true };
+      setResearch(brief);
+      if (!brief.unsupported && !brief.error) saveResearchCache(company, brief);
     } catch (e) {
       setResearchError(e instanceof Error ? e.message : 'Research failed');
     } finally {
@@ -156,6 +198,7 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
   // Stage 3 — match & positioning score. Master CV vs the pasted JD. Runs
   // key-less (keyword coverage); an LLM adds the skip/stretch/apply verdict.
   const handleScore = async () => {
+    if (triageBlocked) return; // Track 4 triage gate — confirm "proceed anyway" first
     const jdText = jdInput.trim();
     if (!jdText || /^https?:\/\/\S+$/.test(jdText)) {
       setScoreError('Paste the job description text (not just a link) to score the match.');
@@ -171,7 +214,9 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
     setScore(null);
     const cfg = resolveProviderConfig();
     try {
-      const res = await scoreMatch({ masterMd, jdText, ...(cfg || {}) });
+      // Forward the already-fetched company research brief (if the user ran it)
+      // as background context — never a claimable fact, truth stays master-CV-only.
+      const res = await scoreMatch({ masterMd, jdText, research, ...(cfg || {}) });
       setScore(res);
     } catch (e) {
       setScoreError(e instanceof Error ? e.message : 'Scoring failed');
@@ -299,14 +344,44 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
               </div>
             )}
 
+            {/* Track 4 — triage gate: flag before any research/score spend */}
+            {triage.verdict === 'flag' && (companyName.trim() || jdInput.trim()) && (
+              <div className="glass-panel rounded-xl border border-amber-900/40 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300">
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> This role may not match your screening rules
+                </div>
+                <ul className="space-y-0.5 pl-0.5">
+                  {triage.reasons.map((r, i) => (
+                    <li key={i} className="flex gap-1.5 text-[11px] text-slate-400 leading-relaxed"><span className="text-slate-600 shrink-0">•</span>{r}</li>
+                  ))}
+                </ul>
+                {!proceedAnyway && (
+                  <button
+                    type="button"
+                    onClick={() => setProceedAnyway(true)}
+                    className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                  >
+                    Proceed anyway
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Opt-in company research (web search) */}
             {companyName.trim() && (
               <div className="space-y-2">
+                {!research && researchVague && isResearchNudgeEnabled() && (
+                  <p className="text-[11px] text-indigo-300/90 flex items-start gap-1.5">
+                    <Globe className="w-3.5 h-3.5 shrink-0 mt-px" />
+                    This JD doesn't specify a stack — company research may help fill that in. (Toggle this hint in Settings.)
+                  </p>
+                )}
                 {!research && (
                   <button
                     type="button"
                     onClick={handleResearch}
-                    disabled={researching}
+                    disabled={researching || triageBlocked}
+                    title={triageBlocked ? 'Confirm "Proceed anyway" above first' : undefined}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-800 disabled:opacity-40 text-[11px] font-bold text-slate-300 transition"
                   >
                     {researching
@@ -352,7 +427,8 @@ export function NewApplicationModal({ isOpen, onClose, onAddApplication }: NewAp
                   <button
                     type="button"
                     onClick={handleScore}
-                    disabled={scoring}
+                    disabled={scoring || triageBlocked}
+                    title={triageBlocked ? 'Confirm "Proceed anyway" above first' : undefined}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-800 disabled:opacity-40 text-[11px] font-bold text-slate-300 transition"
                   >
                     {scoring

@@ -16,8 +16,10 @@ import { DEFAULT_INSTRUCTIONS } from '../lib/defaultInstructions';
 import { useKnowledgeBank } from '../hooks/useKnowledgeBank';
 import { TailoredResume } from '../lib/tailoredResumeService';
 import { tailorResume, convertResumeWithAI } from '../lib/apiClient';
-import { splitTailored, downloadDocx, printPdf, extractHonestyGaps, extractInventoryStrengths } from '../lib/resumeRender';
+import { splitTailored, downloadDocx, downloadPdf, printPdf, extractHonestyGaps, extractInventoryStrengths } from '../lib/resumeRender';
 import { runAtsCheck, AtsReport } from '../lib/atsCheck';
+import { runVisualQa, VisualQaRunResult } from '../lib/visualQa';
+import { usePromptOverrides } from '../hooks/usePromptOverrides';
 import { extractResumeText, ACCEPT_ATTR } from '../lib/resumeImport';
 import { CustomEndpoint, loadCustomEndpoint, normalizeBaseUrl } from '../lib/customEndpoint';
 
@@ -39,6 +41,7 @@ export function ResumeBuilder({
   const { apiKeys, hasAnyKey } = useApiKeys();
   const { masterMd, setMasterMd, status } = useMasterResume(user);
   const { instructions, setInstructions, status: instrStatus, isDefault: instrIsDefault } = useInstructions(user);
+  const { overrides: promptOverrides } = usePromptOverrides(user);
   const [showInstructions, setShowInstructions] = useState(false);
   const { entries: kbEntries, addEntry: addKbEntry } = useKnowledgeBank(user);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('anthropic');
@@ -60,6 +63,9 @@ export function ResumeBuilder({
 
   // Stage 6 — deterministic ATS check on the generated resume (client-side, no LLM).
   const [atsReport, setAtsReport] = useState<AtsReport | null>(null);
+  const [qaResult, setQaResult] = useState<VisualQaRunResult | null>(null);
+  const [qaRunning, setQaRunning] = useState(false);
+  const [qaError, setQaError] = useState<string | null>(null);
 
   // Master-CV import (upload pdf/docx/md/txt → markdown)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -159,6 +165,8 @@ export function ResumeBuilder({
       setResult(md);
       // Run the ATS check on the resume body only (coaching sections stripped).
       setAtsReport(runAtsCheck(splitTailored(md).resumeMd, jdText));
+      setQaResult(null); // stale QA result from a previous generation no longer applies
+      setQaError(null);
       // Save to history — linked to the chosen job, or local-only for quick paste.
       const job = selectedJobId ? applications.find(x => x.id === selectedJobId) : undefined;
       const label = job ? jobTitle(job) : (jdText.trim().split('\n').find(Boolean)?.slice(0, 60) || 'Quick tailor');
@@ -196,9 +204,46 @@ export function ResumeBuilder({
     try { await downloadDocx(splitTailored(md).resumeMd); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not build the .docx'); }
   };
-  const printPdfMd = (md: string) => {
-    try { printPdf(splitTailored(md).resumeMd); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not open the print view'); }
+  // Primary PDF path: deterministic, in-browser vector PDF (pdf-lib). Falls back to
+  // the legacy print dialog only if the generator fails.
+  const downloadPdfMd = async (md: string) => {
+    const resumeMd = splitTailored(md).resumeMd;
+    try { await downloadPdf(resumeMd); }
+    catch (e) {
+      try { printPdf(resumeMd); }
+      catch { setError(e instanceof Error ? e.message : 'Could not build the PDF'); }
+    }
+  };
+
+  // Visual QA (Track 3): rasterize the deterministic PDF, send pages to the
+  // selected BYOK vision model against the shipped rubric (Prompt Manager
+  // override lands in Track 4), apply overflow-lever fixes, re-render — up to
+  // 3 iterations. Deterministic checks (page count, ATS coverage, min font)
+  // always run first and are shown even if the provider has no vision support.
+  const runQa = async (md: string) => {
+    setQaRunning(true);
+    setQaError(null);
+    try {
+      const r = await runVisualQa({
+        resumeMd: splitTailored(md).resumeMd,
+        jdText,
+        rulesPrompt: promptOverrides.visualQaRules?.content,
+        ...callConfig(),
+      });
+      setQaResult(r);
+    } catch (e) {
+      setQaError(e instanceof Error ? e.message : 'Visual QA failed');
+    } finally {
+      setQaRunning(false);
+    }
+  };
+  const downloadQaPdf = () => {
+    if (!qaResult) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(qaResult.finalPdf);
+    a.download = 'tailored-resume-qa.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const toggleKb = (text: string) =>
@@ -236,7 +281,7 @@ export function ResumeBuilder({
       <button onClick={() => downloadDocxMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download ATS-safe Word document" title="Single-column ATS-safe .docx">
         <FileText className="w-3.5 h-3.5 text-sky-400" /> .docx
       </button>
-      <button onClick={() => printPdfMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Export as PDF via print" title="Designed PDF (print → Save as PDF)">
+      <button onClick={() => downloadPdfMd(md)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download designed PDF" title="Designed single-column PDF (deterministic, vector)">
         <Printer className="w-3.5 h-3.5 text-indigo-400" /> PDF
       </button>
     </div>
@@ -611,6 +656,65 @@ export function ResumeBuilder({
                 </div>
               );
             })()}
+
+            {/* Track 3 — visual QA loop: deterministic checks + an optional BYOK vision pass */}
+            {result && (
+              <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold text-slate-100 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-indigo-400" /> Visual QA
+                  </h3>
+                  <button
+                    onClick={() => runQa(result)}
+                    disabled={qaRunning || !selectedKeyExists}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-bold text-slate-300 transition"
+                    title={selectedKeyExists ? 'Rasterize the PDF and check layout against the house style' : 'Add an AI key to run visual QA'}
+                  >
+                    {qaRunning ? 'Checking…' : qaResult ? 'Re-check' : 'Run visual QA'}
+                  </button>
+                </div>
+                {qaError && <p className="text-[11px] text-rose-300">{qaError}</p>}
+                {qaResult && (
+                  <>
+                    <ul className="space-y-1.5">
+                      {qaResult.deterministic.map((c) => (
+                        <li key={c.id} className="flex items-start gap-2 text-[11px] text-slate-300 leading-relaxed">
+                          {c.status === 'pass' ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-px" />
+                            : c.status === 'warn' ? <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-px" />
+                            : <X className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-px" />}
+                          <span><span className="font-bold text-slate-200">{c.label}.</span> {c.detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {qaResult.degraded ? (
+                      <p className="text-[11px] text-amber-300 pt-1 border-t border-slate-800/70">{qaResult.notice}</p>
+                    ) : (
+                      <div className="space-y-1.5 pt-1 border-t border-slate-800/70">
+                        {qaResult.iterations.flatMap((it) => it.issues).length === 0 ? (
+                          <p className="text-[11px] text-emerald-300">No layout defects found — the rendered PDF matches the house style.</p>
+                        ) : (
+                          <>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                              {qaResult.iterations.length} pass{qaResult.iterations.length === 1 ? '' : 'es'} — spacing auto-tightened where possible
+                            </p>
+                            {qaResult.iterations.map((it) => it.issues.map((iss, j) => (
+                              <p key={`${it.iteration}-${j}`} className="text-[11px] text-slate-300 leading-relaxed">
+                                <span className={`font-bold ${iss.severity === 'high' ? 'text-rose-300' : iss.severity === 'medium' ? 'text-amber-300' : 'text-slate-400'}`}>
+                                  {iss.severity}
+                                </span>{' '}— {iss.issue}{iss.lever ? ` (fixed via ${iss.lever})` : ''}
+                              </p>
+                            )))}
+                          </>
+                        )}
+                        <button onClick={downloadQaPdf} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-[11px] font-bold text-slate-300 transition" aria-label="Download the QA-adjusted PDF">
+                          <Printer className="w-3.5 h-3.5 text-indigo-400" /> Download QA-adjusted PDF
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Knowledge-Bank suggestions: gaps (Honesty Notes) + strengths (Inventory) */}
             {kbSuggestions.length > 0 && (

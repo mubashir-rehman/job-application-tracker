@@ -7,6 +7,8 @@ import { ApplicationTable } from './components/ApplicationTable';
 import { ResumeBuilder } from './components/ResumeBuilder';
 import { KnowledgeBank } from './components/KnowledgeBank';
 import { ApiKeysManager } from './components/ApiKeysManager';
+import { UserProfileEditor } from './components/UserProfileEditor';
+import { PromptManager } from './components/PromptManager';
 import { DetailSlideOver } from './components/DetailSlideOver';
 import { NewApplicationModal } from './components/NewApplicationModal';
 import { Plus, Download, Database, RefreshCw, AlertTriangle, X, Trash2, Eye, EyeOff, Sun, Moon, Settings, User, Key } from 'lucide-react';
@@ -126,6 +128,8 @@ export default function App() {
   const isResume = activeView === 'resume';
   const isKnowledge = activeView === 'knowledge';
   const isKeys = activeView === 'keys';
+  const isProfileRules = activeView === 'profile';
+  const isPrompts = activeView === 'prompts';
   const isApplications = activeView === 'applications';
 
   const appsTopBar = (
@@ -178,7 +182,20 @@ export default function App() {
     <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">API Keys</h1>
   );
 
-  const topBar = isResume ? resumeTopBar : isKnowledge ? knowledgeTopBar : isKeys ? keysTopBar : appsTopBar;
+  const profileRulesTopBar = (
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Screening Rules</h1>
+  );
+
+  const promptsTopBar = (
+    <h1 className="text-xl font-black font-display text-slate-100 tracking-tight">Prompt Manager</h1>
+  );
+
+  const topBar = isResume ? resumeTopBar
+    : isKnowledge ? knowledgeTopBar
+    : isKeys ? keysTopBar
+    : isProfileRules ? profileRulesTopBar
+    : isPrompts ? promptsTopBar
+    : appsTopBar;
 
   return (
     <>
@@ -211,7 +228,7 @@ export default function App() {
           />
         ) : undefined}
       >
-        {isResume ? <ResumeBuilder user={user} applications={applications} onManageKeys={() => setActiveView('keys')} history={tailoredItems} onAddTailored={addTailored} onRemoveTailored={removeTailored} tailorTarget={tailorTarget} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : <>
+        {isResume ? <ResumeBuilder user={user} applications={applications} onManageKeys={() => setActiveView('keys')} history={tailoredItems} onAddTailored={addTailored} onRemoveTailored={removeTailored} tailorTarget={tailorTarget} /> : isKnowledge ? <KnowledgeBank user={user} /> : isKeys ? <ApiKeysManager /> : isProfileRules ? <UserProfileEditor user={user} /> : isPrompts ? <PromptManager user={user} /> : <>
         {isLoading && (
           <div className="flex items-center gap-3 glass-panel p-4 rounded-2xl mb-6 max-w-sm animate-pulse">
             <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
@@ -273,6 +290,7 @@ export default function App() {
         isOpen={isNewAppOpen}
         onClose={() => setIsNewAppOpen(false)}
         onAddApplication={handleAddApplication}
+        user={user}
       />
 
       <ProfileModal

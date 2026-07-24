@@ -31,13 +31,14 @@ export interface TailorParams {
   instructions?: string; // user's custom tailoring system prompt (optional)
   model?: string;
   baseUrl?: string;
+  research?: JdResearch | null; // previously-fetched brief, forwarded as background context
 }
 
 // Tailor a master CV to a job description via POST /api/resume/tailor.
 export async function tailorResume(p: TailorParams): Promise<string> {
   const { tailoredMd } = await postJson<{ tailoredMd: string }>(
     '/api/resume/tailor',
-    { masterMd: p.masterMd, jdText: p.jdText, lane: p.lane, instructions: p.instructions },
+    { masterMd: p.masterMd, jdText: p.jdText, lane: p.lane, instructions: p.instructions, research: p.research },
     byokHeaders(p),
   );
   return tailoredMd;
@@ -79,8 +80,14 @@ export interface JdResearch {
   companyWebsite?: string;
   summary?: string;
   marketSalaryHint?: string;
+  productOverview?: string;
+  engCulture?: string;
+  stackSignals?: string[];
+  recentNews?: string[];
+  experienceMatch?: string;
   sources?: { title: string; url: string }[];
-  via?: 'serper' | 'gemini';
+  via?: string;
+  grounded?: boolean;
   unsupported?: boolean;
   error?: string;
 }
@@ -103,6 +110,8 @@ export interface ParseJdParams {
   baseUrl?: string;
   enrich?: boolean; // opt-in web-search company research
   searchKey?: string; // serper.dev key — preferred search backend
+  masterMd?: string; // optional — used only to derive research.experienceMatch during enrich
+  researchPromptOverride?: string; // Track 4 Prompt Manager override for the research-brief prompt
 }
 
 // Parse a job description (text or URL) into structured fields via the
@@ -112,7 +121,11 @@ export async function parseJd(p: ParseJdParams): Promise<ParseJdResult> {
     ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
     : {};
   if (p.searchKey) headers['X-Search-Key'] = p.searchKey;
-  return postJson<ParseJdResult>('/api/jd/parse', { jdText: p.jdText, jdUrl: p.jdUrl, enrich: p.enrich }, headers);
+  return postJson<ParseJdResult>(
+    '/api/jd/parse',
+    { jdText: p.jdText, jdUrl: p.jdUrl, enrich: p.enrich, masterMd: p.masterMd, researchPromptOverride: p.researchPromptOverride },
+    headers,
+  );
 }
 
 export type Recommendation = 'skip' | 'stretch' | 'apply';
@@ -136,6 +149,7 @@ export interface ScoreMatchParams {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  research?: JdResearch | null; // previously-fetched brief, forwarded as background context
 }
 
 // Score a master CV against a job description (Stage 3). Works with or without a key.
@@ -143,7 +157,65 @@ export async function scoreMatch(p: ScoreMatchParams): Promise<ScoreResult> {
   const headers: Record<string, string> = p.provider && p.apiKey
     ? byokHeaders({ provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl })
     : {};
-  return postJson<ScoreResult>('/api/jd/score', { masterMd: p.masterMd, jdText: p.jdText }, headers);
+  return postJson<ScoreResult>('/api/jd/score', { masterMd: p.masterMd, jdText: p.jdText, research: p.research }, headers);
+}
+
+export type QaSeverity = 'high' | 'medium' | 'low';
+
+export interface QaIssue {
+  issue: string;
+  severity: QaSeverity;
+  lever: string | null;
+  note?: string;
+}
+
+export interface VisualQaVisionParams {
+  provider: Provider;
+  apiKey: string;
+  images: string[]; // JPEG data URLs
+  rulesPrompt: string;
+  model?: string;
+}
+
+export interface VisualQaVisionResult {
+  issues: QaIssue[];
+  supported: boolean;
+  error?: string;
+}
+
+// One vision round-trip: POST /api/resume/visual-qa. The iteration loop
+// (map issue → lever → re-render → re-check) lives client-side in
+// src/lib/visualQa.ts, which owns the tokens/renderer state across calls.
+export async function checkVisualQa(p: VisualQaVisionParams): Promise<VisualQaVisionResult> {
+  return postJson<VisualQaVisionResult>(
+    '/api/resume/visual-qa',
+    { images: p.images, rulesPrompt: p.rulesPrompt },
+    byokHeaders(p),
+  );
+}
+
+export interface ExtractedProfile {
+  seniorityLevel: string | null;
+  yearsExperience: number | null;
+  workModels: string[];
+  locations: string[];
+  targetTracks: string[];
+}
+
+export interface ExtractProfileParams {
+  provider: Provider;
+  apiKey: string;
+  masterMd: string;
+  model?: string;
+  baseUrl?: string;
+}
+
+// Best-effort User Profile extraction from the master CV (Track 4) — POST
+// /api/resume/profile-extract. Only fills seniority/years/work-models/locations/
+// target-tracks; comp floor, never-claim, and dealbreakers aren't derivable from
+// a CV and are always left for the user to set by hand.
+export async function extractUserProfile(p: ExtractProfileParams): Promise<ExtractedProfile> {
+  return postJson<ExtractedProfile>('/api/resume/profile-extract', { masterMd: p.masterMd }, byokHeaders(p));
 }
 
 export async function apiHealth(): Promise<{ ok: boolean }> {

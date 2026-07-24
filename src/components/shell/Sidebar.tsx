@@ -2,10 +2,10 @@ import React from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   LayoutGrid, Sparkles, BrainCircuit, Search, Sun, Moon,
-  Settings, LogOut, LogIn, User, Key,
+  Settings, LogOut, LogIn, User, Key, ShieldCheck, FileCode,
 } from 'lucide-react';
 
-export type ViewKey = 'applications' | 'resume' | 'knowledge' | 'keys';
+export type ViewKey = 'applications' | 'resume' | 'knowledge' | 'keys' | 'profile' | 'prompts';
 
 export interface NavItem {
   key: ViewKey;
@@ -21,6 +21,8 @@ export const NAV: NavItem[] = [
   { key: 'applications', label: 'Applications',  shortLabel: 'Apps',      icon: LayoutGrid },
   { key: 'resume',       label: 'Resume Builder', shortLabel: 'Resume',    icon: Sparkles },
   { key: 'knowledge',    label: 'Knowledge Bank', shortLabel: 'Knowledge', icon: BrainCircuit },
+  { key: 'profile',      label: 'Screening Rules',shortLabel: 'Rules',     icon: ShieldCheck },
+  { key: 'prompts',      label: 'Prompt Manager', shortLabel: 'Prompts',   icon: FileCode },
   { key: 'keys',         label: 'API Keys',       shortLabel: 'Keys',      icon: Key },
 ];
 
